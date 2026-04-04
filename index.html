@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KirayaTrack</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --green:#1a7d5a;--gl:#e8f5f0;--gd:#0f4d38;--gm:#2ecc9a;
+  --red:#e53935;--amber:#f59e0b;--blue:#3b82f6;
+  --bg:#f5f6fa;--sur:#ffffff;--txt:#1a1a2e;--sub:#6b7280;--bdr:#e5e7eb;
+  --shadow:0 2px 8px rgba(0,0,0,0.08);--shadow-lg:0 8px 32px rgba(0,0,0,0.12);
+}
+[data-theme=dark]{
+  --bg:#0d1117;--sur:#161b22;--txt:#e6edf3;--sub:#8b949e;--bdr:#30363d;
+  --shadow:0 2px 8px rgba(0,0,0,0.3);--shadow-lg:0 8px 32px rgba(0,0,0,0.4);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;transition:background 0.3s,color 0.3s;}
+
+/* ===== AUTH ===== */
+.auth-page{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:linear-gradient(135deg,#0f4d38 0%,#1a7d5a 50%,#2ecc9a 100%);}
+.auth-box{background:var(--sur);border-radius:20px;padding:40px;width:100%;max-width:420px;box-shadow:var(--shadow-lg);}
+.auth-logo{text-align:center;margin-bottom:32px;}
+.auth-logo-icon{width:64px;height:64px;background:var(--gl);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 12px;}
+.auth-logo h1{font-size:26px;font-weight:800;color:var(--gd);}
+[data-theme=dark] .auth-logo h1{color:var(--gm);}
+.auth-logo p{color:var(--sub);font-size:14px;margin-top:4px;}
+.auth-type-tabs{display:flex;background:var(--bg);border-radius:12px;padding:4px;margin-bottom:24px;gap:4px;}
+.at-tab{flex:1;padding:9px;text-align:center;border:none;border-radius:9px;cursor:pointer;font-size:13px;font-weight:600;color:var(--sub);background:transparent;transition:all 0.2s;}
+.at-tab.active{background:var(--sur);color:var(--green);box-shadow:var(--shadow);}
+.mode-tabs{display:flex;gap:4px;margin-bottom:20px;}
+.mode-tab{flex:1;padding:8px;text-align:center;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--sub);background:var(--bg);transition:all 0.2s;}
+.mode-tab.active{background:var(--green);color:white;}
+.fg{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;}
+.fg label{font-size:12px;font-weight:600;color:var(--sub);text-transform:uppercase;letter-spacing:0.5px;}
+.fg input,.fg select{padding:12px 14px;border:1.5px solid var(--bdr);border-radius:10px;font-size:14px;background:var(--sur);color:var(--txt);outline:none;transition:border-color 0.2s;}
+.fg input:focus,.fg select:focus{border-color:var(--green);}
+.auth-btn{width:100%;padding:14px;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;background:var(--green);color:white;transition:all 0.2s;margin-top:4px;}
+.auth-btn:hover{background:var(--gd);transform:translateY(-1px);}
+.auth-note{text-align:center;font-size:12px;color:var(--sub);margin-top:12px;}
+.auth-err{background:#fee2e2;color:#991b1b;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;display:none;}
+
+/* ===== LANG SELECTOR ===== */
+.lang-page{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:linear-gradient(135deg,#0f4d38 0%,#1a7d5a 100%);}
+.lang-box{background:var(--sur);border-radius:20px;padding:40px;width:100%;max-width:380px;text-align:center;box-shadow:var(--shadow-lg);}
+.lang-box h2{font-size:22px;font-weight:800;margin-bottom:6px;}
+.lang-box p{color:var(--sub);font-size:13px;margin-bottom:28px;}
+.lang-opts{display:flex;flex-direction:column;gap:10px;margin-bottom:24px;}
+.lang-opt{padding:14px 20px;border:2px solid var(--bdr);border-radius:12px;cursor:pointer;font-size:15px;font-weight:600;transition:all 0.2s;display:flex;align-items:center;gap:10px;}
+.lang-opt:hover{border-color:var(--green);background:var(--gl);}
+.lang-opt.selected{border-color:var(--green);background:var(--gl);color:var(--gd);}
+
+/* ===== APP LAYOUT ===== */
+.app{display:none;}
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:250px;background:var(--sur);border-right:1px solid var(--bdr);display:flex;flex-direction:column;z-index:100;transition:transform 0.3s;}
+.sidebar-header{padding:20px;border-bottom:1px solid var(--bdr);}
+.sidebar-logo{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.sidebar-logo-icon{width:36px;height:36px;background:var(--gl);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;}
+.sidebar-logo h2{font-size:17px;font-weight:800;color:var(--gd);}
+[data-theme=dark] .sidebar-logo h2{color:var(--gm);}
+.sidebar-user{font-size:12px;color:var(--sub);padding:2px 0;}
+.sidebar-nav{flex:1;padding:12px 8px;overflow-y:auto;}
+.nav-section{font-size:10px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:1px;padding:8px 12px 4px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;font-size:14px;font-weight:500;color:var(--sub);transition:all 0.15s;margin-bottom:2px;}
+.nav-item:hover{background:var(--gl);color:var(--gd);}
+[data-theme=dark] .nav-item:hover{background:rgba(46,204,154,0.1);color:var(--gm);}
+.nav-item.active{background:var(--green);color:white;}
+.nav-item .ni{font-size:18px;width:24px;text-align:center;}
+.sidebar-footer{padding:8px;}
+.main{margin-left:250px;min-height:100vh;}
+.topbar{background:var(--sur);border-bottom:1px solid var(--bdr);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+.topbar-left{display:flex;align-items:center;gap:12px;}
+.topbar h2{font-size:18px;font-weight:700;}
+.topbar-right{display:flex;align-items:center;gap:8px;}
+.icon-btn{background:var(--bg);border:1px solid var(--bdr);border-radius:8px;padding:7px 10px;cursor:pointer;font-size:15px;color:var(--txt);transition:all 0.15s;}
+.icon-btn:hover{background:var(--bdr);}
+.content{padding:24px;}
+.hamburger{display:none;background:none;border:none;font-size:22px;cursor:pointer;color:var(--txt);}
+
+/* ===== SCREENS ===== */
+.screen{display:none;}
+.screen.active{display:block;}
+
+/* ===== METRICS ===== */
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:20px;}
+.metric{background:var(--sur);border-radius:14px;padding:18px;box-shadow:var(--shadow);border-left:4px solid transparent;}
+.metric.green{border-left-color:var(--green);}
+.metric.red{border-left-color:var(--red);}
+.metric.amber{border-left-color:var(--amber);}
+.metric.blue{border-left-color:var(--blue);}
+.m-lbl{font-size:11px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;}
+.m-val{font-size:28px;font-weight:800;color:var(--txt);}
+.m-val.g{color:var(--gd);}[data-theme=dark] .m-val.g{color:var(--gm);}
+.m-val.r{color:var(--red);}
+.m-val.a{color:#92400e;}
+
+/* ===== CARDS ===== */
+.card{background:var(--sur);border-radius:14px;padding:20px;box-shadow:var(--shadow);margin-bottom:16px;}
+.card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.card-hdr h3{font-size:15px;font-weight:700;}
+.page-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
+.page-hdr h2{font-size:20px;font-weight:800;}
+
+/* ===== TABLES ===== */
+.tbl-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;}
+th{padding:10px 14px;font-size:11px;font-weight:700;color:var(--sub);border-bottom:2px solid var(--bdr);text-align:left;text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap;}
+td{padding:13px 14px;font-size:13px;border-bottom:1px solid var(--bdr);color:var(--txt);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:var(--gl);}
+[data-theme=dark] tbody tr:hover{background:rgba(46,204,154,0.05);}
+
+/* ===== BADGES ===== */
+.badge{display:inline-flex;align-items:center;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;}
+.b-paid{background:#dcfce7;color:#166534;}
+.b-due{background:#fef9c3;color:#854d0e;}
+.b-late{background:#fee2e2;color:#991b1b;}
+.b-vacant{background:#dbeafe;color:#1e40af;}
+.b-moved{background:#f3f4f6;color:#6b7280;}
+.b-occupied{background:#dcfce7;color:#166534;}
+
+/* ===== BUTTONS ===== */
+.btn{padding:9px 18px;border:none;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;transition:all 0.15s;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
+.btn:hover{transform:translateY(-1px);opacity:0.92;}
+.btn:active{transform:translateY(0);}
+.btn-p{background:var(--green);color:white;}
+.btn-d{background:#fee2e2;color:#991b1b;}
+.btn-c{background:var(--gl);color:var(--gd);}
+.btn-w{background:#25D366;color:white;}
+.btn-o{background:transparent;border:1.5px solid var(--bdr);color:var(--txt);}
+.btn-e{background:#dbeafe;color:#1e40af;}
+.btn-s{padding:6px 12px;font-size:12px;}
+
+/* ===== FORMS ===== */
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+@media(max-width:600px){.fgrid{grid-template-columns:1fr;}}
+.fs-ttl{font-size:12px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:0.5px;margin:18px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--bdr);}
+[data-theme=dark] .fs-ttl{color:var(--gm);}
+.f-acts{display:flex;gap:8px;margin-top:20px;flex-wrap:wrap;}
+
+/* ===== MODALS ===== */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:200;justify-content:center;align-items:flex-start;padding:40px 16px;overflow-y:auto;}
+.overlay.open{display:flex;}
+.modal{background:var(--sur);border-radius:20px;padding:28px;width:100%;max-width:540px;color:var(--txt);position:relative;box-shadow:var(--shadow-lg);}
+.modal h3{font-size:18px;font-weight:800;margin-bottom:18px;}
+.mclose{position:absolute;top:18px;right:18px;background:var(--bg);border:none;border-radius:8px;width:32px;height:32px;cursor:pointer;color:var(--sub);font-size:16px;display:flex;align-items:center;justify-content:center;}
+
+/* ===== BUILDING CARDS ===== */
+.bgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-bottom:16px;}
+.bcard{background:var(--sur);border-radius:14px;padding:20px;box-shadow:var(--shadow);border-top:4px solid var(--green);transition:transform 0.2s,box-shadow 0.2s;}
+.bcard:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);}
+.bcard-icon{font-size:32px;margin-bottom:10px;}
+.bcard-name{font-size:17px;font-weight:800;margin-bottom:4px;}
+.bcard-addr{font-size:12px;color:var(--sub);margin-bottom:6px;}
+.bcard-stats{display:flex;gap:12px;margin-bottom:14px;}
+.bcard-stat{font-size:12px;color:var(--sub);}
+.bcard-stat span{font-weight:700;color:var(--txt);}
+
+/* ===== RECEIPT ===== */
+.rcpt{background:var(--bg);border-radius:12px;padding:20px;border:1px dashed var(--bdr);}
+.rcpt-logo{text-align:center;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--bdr);}
+.rcpt-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;font-size:13px;border-bottom:1px solid var(--bdr);color:var(--txt);}
+.rcpt-row:last-child{border:none;font-weight:800;font-size:15px;padding-top:12px;margin-top:4px;}
+
+/* ===== CHART ===== */
+.chart{display:flex;align-items:flex-end;gap:10px;height:160px;padding:0 4px 8px;}
+.bc{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.bf{background:var(--green);border-radius:6px 6px 0 0;width:100%;min-height:4px;transition:height 0.5s;opacity:0.85;}
+.bf:hover{opacity:1;}
+.bl{font-size:10px;color:var(--sub);font-weight:600;}
+.ba{font-size:9px;color:var(--green);font-weight:700;}
+
+/* ===== AVATAR ===== */
+.av{border-radius:50%;background:var(--gl);color:var(--gd);display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;}
+
+/* ===== TABS ===== */
+.tabs{display:flex;border-bottom:2px solid var(--bdr);margin-bottom:16px;gap:0;}
+.tab{padding:10px 18px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:600;color:var(--sub);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all 0.2s;}
+.tab.active{color:var(--green);border-bottom-color:var(--green);}
+.tc{display:none;}
+.tc.active{display:block;}
+
+/* ===== DETAIL ===== */
+.dh{display:flex;align-items:center;gap:16px;margin-bottom:20px;flex-wrap:wrap;}
+.igrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}
+@media(max-width:500px){.igrid{grid-template-columns:1fr;}}
+.ii{padding:12px 14px;background:var(--bg);border-radius:10px;}
+.ii .lbl{font-size:10px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;}
+.ii .val{font-size:14px;font-weight:600;color:var(--txt);}
+.back-btn{background:none;border:none;color:var(--green);cursor:pointer;font-size:14px;font-weight:600;padding:0;margin-bottom:18px;display:inline-flex;align-items:center;gap:5px;}
+
+/* ===== MISC ===== */
+.empty{text-align:center;padding:48px 20px;color:var(--sub);}
+.empty-icon{font-size:48px;margin-bottom:12px;}
+.loading{text-align:center;padding:40px;color:var(--sub);}
+.galert{padding:10px 16px;border-radius:10px;font-size:13px;margin-bottom:14px;display:none;font-weight:500;}
+.ga-s{background:#dcfce7;color:#166534;}
+.ga-e{background:#fee2e2;color:#991b1b;}
+.moveout-item{background:var(--sur);border-radius:12px;padding:16px 18px;margin-bottom:10px;box-shadow:var(--shadow);border-left:4px solid var(--sub);}
+
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%);}
+  .sidebar.open{transform:translateX(0);}
+  .main{margin-left:0;}
+  .hamburger{display:block;}
+  .metrics{grid-template-columns:1fr 1fr;}
+  .content{padding:16px;}
+}
+</style>
+</head>
+<body>
+
+<!-- AUTH PAGE -->
+<div id="auth-page" class="auth-page">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">🏠</div>
+      <h1>KirayaTrack</h1>
+      <p>Smart Rental Management</p>
+    </div>
+    <div class="auth-type-tabs">
+      <button class="at-tab active" onclick="setAuthType('landlord',this)">🏢 Landlord</button>
+      <button class="at-tab" onclick="setAuthType('tenant',this)">👤 Tenant</button>
+    </div>
+
+    <!-- LANDLORD -->
+    <div id="ll-auth">
+      <div class="mode-tabs">
+        <button class="mode-tab active" onclick="setMode('login',this)">Login</button>
+        <button class="mode-tab" onclick="setMode('register',this)">Register</button>
+      </div>
+      <div id="ll-login-form">
+        <div class="fg"><label>Phone Number</label><input type="tel" id="ll-ph" placeholder="9876543210"/></div>
+        <div class="fg"><label>Email (optional)</label><input type="email" id="ll-em" placeholder="you@email.com"/></div>
+        <div class="fg"><label>Password</label><input type="password" id="ll-pw" placeholder="••••••"/></div>
+        <div id="ll-err" class="auth-err"></div>
+        <button class="auth-btn" onclick="llLogin()">Login →</button>
+      </div>
+      <div id="ll-reg-form" style="display:none;">
+        <div class="fg"><label>Full Name</label><input type="text" id="lr-name" placeholder="Your name"/></div>
+        <div class="fg"><label>Phone Number *</label><input type="tel" id="lr-ph" placeholder="9876543210"/></div>
+        <div class="fg"><label>Email (optional)</label><input type="email" id="lr-em" placeholder="you@email.com"/></div>
+        <div class="fg"><label>Password *</label><input type="password" id="lr-pw" placeholder="Min 6 chars"/></div>
+        <div class="fg"><label>Confirm Password *</label><input type="password" id="lr-pw2" placeholder="Repeat password"/></div>
+        <div id="lr-err" class="auth-err"></div>
+        <button class="auth-btn" onclick="llRegister()">Create Account →</button>
+      </div>
+    </div>
+
+    <!-- TENANT -->
+    <div id="tn-auth" style="display:none;">
+      <div class="fg"><label>Phone Number</label><input type="tel" id="tn-ph" placeholder="9876543210"/></div>
+      <div class="fg"><label>PIN (4 digits)</label><input type="password" id="tn-pin" placeholder="••••" maxlength="4"/></div>
+      <div id="tn-err" class="auth-err"></div>
+      <button class="auth-btn" onclick="tnLogin()">Login →</button>
+      <p class="auth-note">Contact your landlord to get your PIN</p>
+    </div>
+  </div>
+</div>
+
+<!-- LANGUAGE PAGE -->
+<div id="lang-page" class="lang-page" style="display:none;">
+  <div class="lang-box">
+    <div style="font-size:40px;margin-bottom:12px;">🌐</div>
+    <h2>Choose Language</h2>
+    <p>Select your preferred language<br>अपनी भाषा चुनें</p>
+    <div class="lang-opts">
+      <div class="lang-opt selected" onclick="pickLang('english',this)"><span>🇬🇧</span> English</div>
+      <div class="lang-opt" onclick="pickLang('hindi',this)"><span>🇮🇳</span> हिंदी (Hindi)</div>
+      <div class="lang-opt" onclick="pickLang('hinglish',this)"><span>✨</span> Hinglish</div>
+    </div>
+    <button class="auth-btn" onclick="confirmLang()">Continue →</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" class="app">
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <div class="sidebar-logo-icon">🏠</div>
+        <h2>KirayaTrack</h2>
+      </div>
+      <div class="sidebar-user" id="sidebar-user">Loading...</div>
+    </div>
+    <nav class="sidebar-nav" id="sidebar-nav"></nav>
+    <div class="sidebar-footer">
+      <div class="nav-item" onclick="toggleTheme()"><span class="ni" id="theme-icon">🌙</span><span id="theme-txt">Dark Mode</span></div>
+      <div class="nav-item" onclick="openLangChange()"><span class="ni">🌐</span><span id="lang-txt">Language</span></div>
+      <div class="nav-item" style="color:var(--red);" onclick="logout()"><span class="ni">🚪</span><span>Logout</span></div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" onclick="toggleSidebar()">☰</button>
+        <h2 id="page-title">Dashboard</h2>
+      </div>
+      <div class="topbar-right">
+        <span style="font-size:12px;color:var(--sub);" id="top-date"></span>
+      </div>
+    </div>
+    <div class="content">
+      <div id="galert" class="galert"></div>
+
+      <!-- DASHBOARD -->
+      <div id="s-dashboard" class="screen active">
+        <div id="dash-metrics" class="metrics"></div>
+        <div class="card"><div class="card-hdr"><h3 id="t-alerts">⚠️ Alerts</h3></div><div id="dash-alerts"><div class="loading">Loading...</div></div></div>
+        <div class="card"><div class="card-hdr"><h3 id="t-overview">👥 Tenants Overview</h3></div><div class="tbl-wrap" id="dash-tenants"><div class="loading">Loading...</div></div></div>
+      </div>
+
+      <!-- BUILDINGS -->
+      <div id="s-buildings" class="screen">
+        <div class="page-hdr"><h2 id="t-buildings">Buildings</h2><button class="btn btn-p" onclick="openBModal()">+ <span id="t-addbuilding">Add Building</span></button></div>
+        <div id="buildings-content"><div class="loading">Loading...</div></div>
+      </div>
+
+      <!-- BUILDING ROOMS -->
+      <div id="s-brooms" class="screen">
+        <button class="back-btn" onclick="showScreen('buildings')">← <span id="t-back">Back</span></button>
+        <div class="page-hdr"><h2 id="brooms-title">Rooms</h2><button class="btn btn-p" onclick="openRModal()">+ <span id="t-addroom">Add Room</span></button></div>
+        <div class="card tbl-wrap" id="brooms-content"><div class="loading">Loading...</div></div>
+      </div>
+
+      <!-- TENANTS -->
+      <div id="s-tenants" class="screen">
+        <div class="page-hdr"><h2 id="t-tenants">Tenants</h2><button class="btn btn-p" onclick="openTModal()">+ <span id="t-addtenant">Add Tenant</span></button></div>
+        <div class="card tbl-wrap" id="tenants-content"><div class="loading">Loading...</div></div>
+      </div>
+
+      <!-- TENANT DETAIL -->
+      <div id="s-tdetail" class="screen">
+        <button class="back-btn" onclick="showScreen('tenants')">← Back</button>
+        <div id="tdetail-content"></div>
+      </div>
+
+      <!-- PAYMENTS -->
+      <div id="s-payments" class="screen">
+        <div class="page-hdr"><h2 id="t-payments">Payments</h2><button class="btn btn-p" onclick="openPModal()">+ <span id="t-recpay">Record Payment</span></button></div>
+        <div class="card tbl-wrap" id="payments-content"><div class="loading">Loading...</div></div>
+      </div>
+
+      <!-- BILLS -->
+      <div id="s-bills" class="screen">
+        <div class="page-hdr"><h2 id="t-bills">Bills</h2><button class="btn btn-p" onclick="openBillModal()">+ <span id="t-addbill">Add Bill</span></button></div>
+        <div class="card tbl-wrap" id="bills-content"><div class="loading">Loading...</div></div>
+      </div>
+
+      <!-- REPORTS -->
+      <div id="s-reports" class="screen">
+        <div class="page-hdr"><h2 id="t-reports">Reports</h2></div>
+        <div id="rep-metrics" class="metrics"></div>
+        <div class="card"><div class="card-hdr"><h3 id="t-chart">Monthly Income Chart</h3></div><div id="rep-chart"></div></div>
+        <div class="card"><div class="card-hdr"><h3>Month-wise Breakdown</h3></div><div class="tbl-wrap" id="rep-table"></div></div>
+      </div>
+
+      <!-- MOVE OUT -->
+      <div id="s-moveout" class="screen">
+        <div class="page-hdr"><h2 id="t-moveout">Move-out History</h2></div>
+        <div id="moveout-content"><div class="loading">Loading...</div></div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div id="s-settings" class="screen">
+        <div class="page-hdr"><h2 id="t-settings">Settings</h2></div>
+        <div class="card">
+          <div class="fs-ttl" id="t-defbills">Default Bill Amounts</div>
+          <p style="font-size:13px;color:var(--sub);margin-bottom:16px;" id="t-defbills-desc">These will auto-fill when adding utility bills</p>
+          <div class="fgrid">
+            <div class="fg"><label id="t-water">Default Water Bill (₹)</label><input type="number" id="sw" placeholder="0"/></div>
+            <div class="fg"><label id="t-garbage">Default Garbage Bill (₹)</label><input type="number" id="sg" placeholder="0"/></div>
+          </div>
+          <div class="f-acts"><button class="btn btn-p" onclick="saveSettings()">💾 Save Settings</button></div>
+        </div>
+      </div>
+
+      <!-- TENANT PORTAL -->
+      <div id="s-mydetails" class="screen">
+        <div id="mydetails-content"><div class="loading">Loading...</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div class="overlay" id="b-modal"><div class="modal">
+  <button class="mclose" onclick="closeModal('b-modal')">✕</button>
+  <h3 id="bm-ttl">Add Building</h3>
+  <input type="hidden" id="bm-id"/>
+  <div class="fg" style="margin-bottom:12px;"><label>Name *</label><input type="text" id="bm-name" placeholder="Sharma Apartments"/></div>
+  <div class="fg" style="margin-bottom:18px;"><label>Address</label><input type="text" id="bm-addr" placeholder="Sector 15, City"/></div>
+  <div class="f-acts"><button class="btn btn-p" onclick="saveBuilding()">Save</button><button class="btn btn-o" onclick="closeModal('b-modal')">Cancel</button></div>
+</div></div>
+
+<div class="overlay" id="r-modal"><div class="modal">
+  <button class="mclose" onclick="closeModal('r-modal')">✕</button>
+  <h3>Add Room</h3>
+  <div class="fg" style="margin-bottom:12px;"><label>Room Number *</label><input type="text" id="rm-num" placeholder="101"/></div>
+  <div class="fg" style="margin-bottom:18px;"><label>Floor</label><input type="text" id="rm-floor" placeholder="Ground / 1st / 2nd"/></div>
+  <div class="f-acts"><button class="btn btn-p" onclick="saveRoom()">Save</button><button class="btn btn-o" onclick="closeModal('r-modal')">Cancel</button></div>
+</div></div>
+
+<div class="overlay" id="t-modal"><div class="modal">
+  <button class="mclose" onclick="closeModal('t-modal')">✕</button>
+  <h3>Add Tenant</h3>
+  <div class="fs-ttl">Personal Details</div>
+  <div class="fgrid">
+    <div class="fg"><label>Full Name *</label><input type="text" id="tm-name" placeholder="Rahul Kumar"/></div>
+    <div class="fg"><label>Phone *</label><input type="tel" id="tm-ph" placeholder="9876543210"/></div>
+    <div class="fg"><label>Occupation</label><input type="text" id="tm-occ" placeholder="Software Engineer"/></div>
+    <div class="fg"><label>Emergency Contact</label><input type="tel" id="tm-emg" placeholder="Emergency number"/></div>
+    <div class="fg"><label>ID Proof</label><select id="tm-id"><option>Aadhaar Card</option><option>PAN Card</option><option>Driving Licence</option><option>Passport</option></select></div>
+    <div class="fg"><label>Tenant PIN (4 digits)</label><input type="password" id="tm-pin" placeholder="4 digit login PIN" maxlength="4"/></div>
+  </div>
+  <div class="fs-ttl">Rental Details</div>
+  <div class="fgrid">
+    <div class="fg"><label>Building *</label><select id="tm-bld" onchange="loadRoomsDD()"><option value="">Select Building</option></select></div>
+    <div class="fg"><label>Room *</label><select id="tm-room"><option value="">Select Room</option></select></div>
+    <div class="fg"><label>Monthly Rent (₹) *</label><input type="number" id="tm-rent" placeholder="5000"/></div>
+    <div class="fg"><label>Security Deposit (₹)</label><input type="number" id="tm-dep" placeholder="10000"/></div>
+    <div class="fg"><label>Move-in Date</label><input type="date" id="tm-in"/></div>
+    <div class="fg"><label>Expected Move-out</label><input type="date" id="tm-out"/></div>
+  </div>
+  <div class="f-acts"><button class="btn btn-p" onclick="saveTenant()">Save Tenant</button><button class="btn btn-o" onclick="closeModal('t-modal')">Cancel</button></div>
+</div></div>
+
+<div class="overlay" id="p-modal"><div class="modal">
+  <button class="mclose" onclick="closeModal('p-modal')">✕</button>
+  <h3>Record Payment</h3>
+  <div class="fg" style="margin-bottom:12px;"><label>Tenant *</label><select id="pm-ten"><option value="">Select</option></select></div>
+  <div class="fg" style="margin-bottom:12px;"><label>Amount (₹) *</label><input type="number" id="pm-amt" placeholder="5000"/></div>
+  <div class="fg" style="margin-bottom:12px;"><label>Month *</label><input type="month" id="pm-mo"/></div>
+  <div class="fg" style="margin-bottom:18px;"><label>Type</label><select id="pm-type"><option value="rent">Rent</option><option value="electricity">Electricity</option><option value="water">Water</option><option value="garbage">Garbage</option><option value="deposit">Security Deposit</option></select></div>
+  <div class="f-acts"><button class="btn btn-p" onclick="savePayment()">Save</button><button class="btn btn-o" onclick="closeModal('p-modal')">Cancel</button></div>
+</div></div>
+
+<div class="overlay" id="bill-modal"><div class="modal">
+  <button class="mclose" onclick="closeModal('bill-modal')">✕</button>
+  <h3>Add Utility Bill</h3>
+  <div class="fg" style="margin-bottom:12px;"><label>Tenant *</label><select id="bl-ten"><option value="">Select</option></select></div>
+  <div class="fg" style="margin-bottom:12px;"><label>Month *</label><input type="month" id="bl-mo"/></div>
+  <div class="fgrid" style="margin-bottom:18px;">
+    <div class="fg"><label>Electricity (₹)</label><input type="number" id="bl-el" placeholder="0"/></div>
+    <div class="fg"><label>Water (₹)</label><input type="number" id="bl-wa" placeholder="0"/></div>
+    <div class="fg"><label>Garbage (₹)</label><input type="number" id="bl-ga" placeholder="0"/></div>
+  </div>
+  <div class="f-acts"><button class="btn btn-p" onclick="saveBill()">Save</button><button class="btn btn-o" onclick="closeModal('bill-modal')">Cancel</button></div>
+</div></div>
+
+<div class="overlay" id="mo-modal"><div class="modal">
+  <button class="mclose" onclick="closeModal('mo-modal')">✕</button>
+  <h3>🚪 Move Out Tenant</h3>
+  <p style="font-size:13px;color:var(--sub);margin-bottom:18px;">This will free up the room and move tenant to history.</p>
+  <div class="fg" style="margin-bottom:18px;"><label>Move-out Date *</label><input type="date" id="mo-date"/></div>
+  <div class="f-acts"><button class="btn btn-d" onclick="confirmMO()">Confirm Move Out</button><button class="btn btn-o" onclick="closeModal('mo-modal')">Cancel</button></div>
+</div></div>
+
+<div class="overlay" id="rcpt-modal"><div class="modal">
+  <button class="mclose" onclick="closeModal('rcpt-modal')">✕</button>
+  <h3>🧾 Rent Receipt</h3>
+  <div id="rcpt-content" style="margin-bottom:18px;"></div>
+  <div class="f-acts">
+    <button class="btn btn-p" onclick="window.print()">🖨️ Print</button>
+    <button class="btn btn-w" id="wa-btn">💬 WhatsApp</button>
+    <button class="btn btn-o" onclick="closeModal('rcpt-modal')">Close</button>
+  </div>
+</div></div>
+
+<script>
+const SB='https://lleerkkyjunnnwnblqft.supabase.co';
+const SK='sb_publishable_zjU1RttLCBRXdcVRWe8SjA_7E78E-s5';
+const {createClient}=supabase;
+const db=createClient(SB,SK);
+
+let U=null,CB=null,CT=null,MOT=null,SL='english';
+
+const TX={
+  english:{dashboard:'Dashboard',buildings:'Buildings',tenants:'Tenants',payments:'Payments',bills:'Bills',reports:'Reports',moveout:'Move-out History',settings:'Settings',alerts:'⚠️ Alerts',overview:'👥 Tenants Overview',addBuilding:'Add Building',addTenant:'Add Tenant',addRoom:'Add Room',recpay:'Record Payment',addbill:'Add Bill',chart:'Monthly Income Chart',defbills:'Default Bill Amounts',defbillsdesc:'These will auto-fill when adding utility bills',water:'Default Water Bill (₹)',garbage:'Default Garbage Bill (₹)',back:'Back',mydetails:'My Details',allclear:'✅ All payments up to date!',notenants:'No tenants yet.',totalb:'Total Buildings',totalr:'Total Rooms',activet:'Active Tenants',vacantr:'Vacant Rooms',collected:'Collected',pending:'Pending'},
+  hindi:{dashboard:'डैशबोर्ड',buildings:'इमारतें',tenants:'किरायेदार',payments:'भुगतान',bills:'बिल',reports:'रिपोर्ट',moveout:'इतिहास',settings:'सेटिंग्स',alerts:'⚠️ अलर्ट',overview:'👥 सारांश',addBuilding:'इमारत जोड़ें',addTenant:'किरायेदार जोड़ें',addRoom:'कमरा जोड़ें',recpay:'भुगतान दर्ज',addbill:'बिल जोड़ें',chart:'मासिक चार्ट',defbills:'डिफ़ॉल्ट बिल',defbillsdesc:'बिल जोड़ते समय यह राशि स्वचालित भरेगी',water:'पानी बिल (₹)',garbage:'कचरा बिल (₹)',back:'वापस',mydetails:'मेरी जानकारी',allclear:'✅ सभी भुगतान हो गए!',notenants:'कोई किरायेदार नहीं।',totalb:'कुल इमारतें',totalr:'कुल कमरे',activet:'सक्रिय किरायेदार',vacantr:'खाली कमरे',collected:'एकत्रित',pending:'बकाया'},
+  hinglish:{dashboard:'Dashboard',buildings:'Buildings',tenants:'Tenants',payments:'Payment',bills:'Bills',reports:'Reports',moveout:'Move-out',settings:'Settings',alerts:'⚠️ Alerts',overview:'👥 Tenants',addBuilding:'Building Jodo',addTenant:'Tenant Jodo',addRoom:'Room Jodo',recpay:'Payment Karo',addbill:'Bill Jodo',chart:'Monthly Chart',defbills:'Default Bills',defbillsdesc:'Bill add karte waqt ye auto fill hoga',water:'Paani Bill (₹)',garbage:'Garbage Bill (₹)',back:'Wapas',mydetails:'Meri Details',allclear:'✅ Sab payments clear!',notenants:'Koi tenant nahi.',totalb:'Total Buildings',totalr:'Total Rooms',activet:'Active Tenants',vacantr:'Vacant Rooms',collected:'Collected',pending:'Pending'}
+};
+
+function t(k){return(TX[U?.lang||'english']||TX.english)[k]||k;}
+
+// THEME
+const st=localStorage.getItem('kt-theme');
+if(st==='dark'){document.documentElement.setAttribute('data-theme','dark');}
+function toggleTheme(){
+  const d=document.documentElement.getAttribute('data-theme')==='dark';
+  document.documentElement.setAttribute('data-theme',d?'light':'dark');
+  localStorage.setItem('kt-theme',d?'light':'dark');
+  document.getElementById('theme-icon').textContent=d?'🌙':'☀️';
+  document.getElementById('theme-txt').textContent=d?'Dark Mode':'Light Mode';
+}
+if(st==='dark'){setTimeout(()=>{const ti=document.getElementById('theme-icon');const tt=document.getElementById('theme-txt');if(ti){ti.textContent='☀️';tt.textContent='Light Mode';}},100);}
+
+// AUTH TYPE
+let authType='landlord',llMode='login';
+function setAuthType(type,el){
+  authType=type;
+  document.querySelectorAll('.at-tab').forEach(b=>b.classList.remove('active'));el.classList.add('active');
+  document.getElementById('ll-auth').style.display=type==='landlord'?'':'none';
+  document.getElementById('tn-auth').style.display=type==='tenant'?'':'none';
+}
+function setMode(m,el){
+  llMode=m;
+  el.parentElement.querySelectorAll('.mode-tab').forEach(b=>b.classList.remove('active'));el.classList.add('active');
+  document.getElementById('ll-login-form').style.display=m==='login'?'':'none';
+  document.getElementById('ll-reg-form').style.display=m==='register'?'':'none';
+}
+function showAuthErr(id,msg){const el=document.getElementById(id);el.textContent=msg;el.style.display='block';setTimeout(()=>el.style.display='none',4000);}
+
+// LANDLORD LOGIN
+async function llLogin(){
+  const ph=document.getElementById('ll-ph').value.trim();
+  const em=document.getElementById('ll-em').value.trim();
+  const pw=document.getElementById('ll-pw').value;
+  if((!ph&&!em)||!pw){showAuthErr('ll-err','Phone/email and password required!');return;}
+  let q=db.from('landlords').select('*');
+  if(ph) q=q.eq('phone',ph); else q=q.eq('email',em);
+  const {data,error}=await q.single();
+  if(error||!data){showAuthErr('ll-err','Account not found!');return;}
+  if(data.password_hash!==btoa(pw)){showAuthErr('ll-err','Wrong password!');return;}
+  localStorage.setItem('kt-ll',JSON.stringify(data));
+  U={...data,type:'landlord',lang:data.language||'english'};
+  initApp();
+}
+
+// LANDLORD REGISTER
+async function llRegister(){
+  const name=document.getElementById('lr-name').value.trim();
+  const ph=document.getElementById('lr-ph').value.trim();
+  const em=document.getElementById('lr-em').value.trim();
+  const pw=document.getElementById('lr-pw').value;
+  const pw2=document.getElementById('lr-pw2').value;
+  if(!name||!ph||!pw){showAuthErr('lr-err','Name, phone and password required!');return;}
+  if(pw!==pw2){showAuthErr('lr-err','Passwords do not match!');return;}
+  if(pw.length<6){showAuthErr('lr-err','Password must be 6+ characters!');return;}
+  const {data:ex}=await db.from('landlords').select('id').eq('phone',ph);
+  if(ex?.length){showAuthErr('lr-err','Phone already registered!');return;}
+  const {data,error}=await db.from('landlords').insert({name,phone:ph,email:em||null,password_hash:btoa(pw),language:'english',default_water_bill:0,default_garbage_bill:0}).select().single();
+  if(error){showAuthErr('lr-err','Error: '+error.message);return;}
+  localStorage.setItem('kt-ll',JSON.stringify(data));
+  U={...data,type:'landlord',lang:'english'};
+  showLangPage();
+}
+
+// TENANT LOGIN
+async function tnLogin(){
+  const ph=document.getElementById('tn-ph').value.trim();
+  const pin=document.getElementById('tn-pin').value.trim();
+  if(!ph||!pin){showAuthErr('tn-err','Phone and PIN required!');return;}
+  const {data,error}=await db.from('tenants').select('*').eq('phone',ph).eq('pin',pin).eq('is_active',true).single();
+  if(error||!data){showAuthErr('tn-err','Wrong phone or PIN!');return;}
+  localStorage.setItem('kt-tn',JSON.stringify(data));
+  U={...data,type:'tenant',lang:data.language||'english'};
+  initApp();
+}
+
+// LANG PAGE
+function showLangPage(){
+  document.getElementById('auth-page').style.display='none';
+  document.getElementById('lang-page').style.display='flex';
+}
+function pickLang(lang,el){
+  SL=lang;
+  document.querySelectorAll('.lang-opt').forEach(o=>o.classList.remove('selected'));el.classList.add('selected');
+}
+async function confirmLang(){
+  if(U.type==='landlord'){
+    await db.from('landlords').update({language:SL}).eq('id',U.id);
+    U.lang=SL;
+    const s=JSON.parse(localStorage.getItem('kt-ll')||'{}');s.language=SL;localStorage.setItem('kt-ll',JSON.stringify(s));
+  }
+  document.getElementById('lang-page').style.display='none';
+  initApp();
+}
+function openLangChange(){
+  document.getElementById('lang-page').style.display='flex';
+  document.getElementById('app').style.display='none';
+  document.querySelector('#lang-page .auth-btn').onclick=async()=>{
+    if(U.type==='landlord'){await db.from('landlords').update({language:SL}).eq('id',U.id);U.lang=SL;}
+    document.getElementById('lang-page').style.display='none';
+    document.getElementById('app').style.display='';
+    applyLang();
+  };
+}
+
+// INIT APP
+function initApp(){
+  document.getElementById('auth-page').style.display='none';
+  document.getElementById('lang-page').style.display='none';
+  document.getElementById('app').style.display='';
+  document.getElementById('sidebar-user').textContent=(U.name||U.phone)+(U.type==='tenant'?' (Tenant)':' (Landlord)');
+  document.getElementById('top-date').textContent=new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'long',year:'numeric'});
+  applyLang();buildNav();
+  if(U.type==='landlord'){loadSettings();showScreen('dashboard');}
+  else{showScreen('mydetails');}
+}
+
+function applyLang(){
+  if(!U) return;
+  const ids={
+    't-alerts':'alerts','t-overview':'overview','t-buildings':'buildings','t-tenants':'tenants',
+    't-payments':'payments','t-bills':'bills','t-reports':'reports','t-moveout':'moveout',
+    't-settings':'settings','t-addbuilding':'addBuilding','t-addtenant':'addTenant',
+    't-addroom':'addRoom','t-recpay':'recpay','t-addbill':'addbill','t-chart':'chart',
+    't-defbills':'defbills','t-defbills-desc':'defbillsdesc','t-water':'water',
+    't-garbage':'garbage','t-back':'back'
+  };
+  Object.entries(ids).forEach(([id,key])=>{const el=document.getElementById(id);if(el)el.textContent=t(key);});
+  document.getElementById('lang-txt').textContent=U.lang==='english'?'Language / भाषा':U.lang==='hindi'?'भाषा':'Language';
+}
+
+function buildNav(){
+  const nav=document.getElementById('sidebar-nav');
+  if(U.type==='landlord'){
+    const items=[
+      {icon:'📊',key:'dashboard',screen:'dashboard'},
+      {icon:'🏢',key:'buildings',screen:'buildings'},
+      {icon:'👥',key:'tenants',screen:'tenants'},
+      {icon:'💰',key:'payments',screen:'payments'},
+      {icon:'⚡',key:'bills',screen:'bills'},
+      {icon:'📈',key:'reports',screen:'reports'},
+      {icon:'📦',key:'moveout',screen:'moveout'},
+      {icon:'⚙️',key:'settings',screen:'settings'},
+    ];
+    nav.innerHTML=items.map(i=>`<div class="nav-item" id="nav-${i.screen}" onclick="showScreen('${i.screen}')"><span class="ni">${i.icon}</span><span>${t(i.key)}</span></div>`).join('');
+  } else {
+    nav.innerHTML=`<div class="nav-item active" id="nav-mydetails" onclick="showScreen('mydetails')"><span class="ni">👤</span><span>${t('mydetails')}</span></div>`;
+  }
+}
+
+function showScreen(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const s=document.getElementById('s-'+name);if(s)s.classList.add('active');
+  const n=document.getElementById('nav-'+name);if(n)n.classList.add('active');
+  document.getElementById('page-title').textContent=t(name)||name;
+  const loaders={dashboard:loadDashboard,buildings:loadBuildings,tenants:loadTenants,payments:loadPayments,bills:loadBills,reports:loadReports,moveout:loadMoveout,mydetails:loadMyDetails};
+  if(loaders[name])loaders[name]();
+  if(window.innerWidth<768)document.getElementById('sidebar').classList.remove('open');
+}
+
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');}
+
+function showAlert(msg,type='success'){
+  const el=document.getElementById('galert');
+  el.textContent=msg;el.className='galert '+(type==='error'?'ga-e':'ga-s');el.style.display='block';
+  setTimeout(()=>el.style.display='none',3000);
+}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+function fmt(n){return Number(n||0).toLocaleString('en-IN');}
+function getM(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
+function ini(n){return(n||'?').split(' ').map(x=>x[0]).join('').toUpperCase().slice(0,2);}
+function logout(){localStorage.removeItem('kt-ll');localStorage.removeItem('kt-tn');U=null;document.getElementById('app').style.display='none';document.getElementById('auth-page').style.display='flex';}
+
+// SETTINGS
+async function loadSettings(){
+  if(!U||U.type!=='landlord')return;
+  const {data}=await db.from('landlords').select('*').eq('id',U.id).single();
+  if(data){U.default_water_bill=data.default_water_bill||0;U.default_garbage_bill=data.default_garbage_bill||0;document.getElementById('sw').value=data.default_water_bill||0;document.getElementById('sg').value=data.default_garbage_bill||0;}
+}
+async function saveSettings(){
+  const w=Number(document.getElementById('sw').value||0);const g=Number(document.getElementById('sg').value||0);
+  await db.from('landlords').update({default_water_bill:w,default_garbage_bill:g}).eq('id',U.id);
+  U.default_water_bill=w;U.default_garbage_bill=g;showAlert('Settings saved!');
+}
+
+// DASHBOARD
+async function loadDashboard(){
+  const [b,r,ten,pay]=await Promise.all([
+    db.from('buildings').select('*').eq('landlord_id',U.id),
+    db.from('rooms').select('*'),
+    db.from('tenants').select('*').eq('is_active',true).eq('landlord_id',U.id),
+    db.from('payments').select('*').eq('month',getM())
+  ]);
+  const B=b.data||[],R=r.data||[],T=ten.data||[],P=pay.data||[];
+  const bIds=B.map(x=>x.id);
+  const bR=R.filter(r=>bIds.includes(r.building_id));
+  const col=P.filter(p=>T.some(t=>t.id===p.tenant_id)).reduce((s,p)=>s+Number(p.amount),0);
+  const tot=T.reduce((s,t)=>s+Number(t.monthly_rent),0);
+  document.getElementById('dash-metrics').innerHTML=`
+    <div class="metric green"><div class="m-lbl">${t('totalb')}</div><div class="m-val">${B.length}</div></div>
+    <div class="metric blue"><div class="m-lbl">${t('totalr')}</div><div class="m-val">${bR.length}</div></div>
+    <div class="metric green"><div class="m-lbl">${t('activet')}</div><div class="m-val g">${T.length}</div></div>
+    <div class="metric amber"><div class="m-lbl">${t('vacantr')}</div><div class="m-val a">${bR.filter(r=>!r.is_occupied).length}</div></div>
+    <div class="metric green"><div class="m-lbl">${t('collected')}</div><div class="m-val g">₹${fmt(col)}</div></div>
+    <div class="metric red"><div class="m-lbl">${t('pending')}</div><div class="m-val r">₹${fmt(Math.max(0,tot-col))}</div></div>`;
+
+  const due=T.filter(tn=>{const pd=P.filter(p=>p.tenant_id===tn.id).reduce((s,p)=>s+Number(p.amount),0);return pd<tn.monthly_rent;});
+  document.getElementById('dash-alerts').innerHTML=due.length?`<div class="tbl-wrap"><table><thead><tr><th>Tenant</th><th>Due</th><th>Action</th></tr></thead><tbody>${due.map(tn=>{const pd=P.filter(p=>p.tenant_id===tn.id).reduce((s,p)=>s+Number(p.amount),0);return`<tr><td><div style="display:flex;align-items:center;gap:8px;"><div class="av" style="width:34px;height:34px;font-size:12px;">${ini(tn.name)}</div><div><b>${tn.name}</b><div style="font-size:11px;color:var(--sub);">${tn.phone}</div></div></div></td><td style="color:var(--red);font-weight:700;">₹${fmt(tn.monthly_rent-pd)}</td><td style="display:flex;gap:6px;"><button class="btn btn-c btn-s" onclick="window.location='tel:${tn.phone}'">📞 Call</button><button class="btn btn-w btn-s" onclick="openWA('${tn.phone}','${tn.name}')">💬 WA</button></td></tr>`;}).join('')}</tbody></table></div>`:`<div class="empty"><div class="empty-icon">✅</div>${t('allclear')}</div>`;
+
+  document.getElementById('dash-tenants').innerHTML=T.length?`<table><thead><tr><th>Tenant</th><th>Rent</th><th>Paid</th><th>Status</th><th>Action</th></tr></thead><tbody>${T.map(tn=>{const pd=P.filter(p=>p.tenant_id===tn.id).reduce((s,p)=>s+Number(p.amount),0);const st=pd>=tn.monthly_rent;return`<tr onclick="showTDetail('${tn.id}')" style="cursor:pointer;"><td><div style="display:flex;align-items:center;gap:8px;"><div class="av" style="width:36px;height:36px;font-size:12px;">${ini(tn.name)}</div><div><div style="font-weight:600;">${tn.name}</div><div style="font-size:11px;color:var(--sub);">${tn.phone}</div></div></div></td><td>₹${fmt(tn.monthly_rent)}</td><td style="color:var(--gd);font-weight:700;">₹${fmt(pd)}</td><td><span class="badge ${st?'b-paid':'b-late'}">${st?'Paid':'Due'}</span></td><td><button class="btn btn-c btn-s" onclick="event.stopPropagation();window.location='tel:${tn.phone}'">📞</button></td></tr>`;}).join('')}</tbody></table>`:`<div class="empty"><div class="empty-icon">👥</div>${t('notenants')}</div>`;
+}
+
+// BUILDINGS
+async function loadBuildings(){
+  const [b,r,ten]=await Promise.all([
+    db.from('buildings').select('*').eq('landlord_id',U.id).order('created_at'),
+    db.from('rooms').select('*'),
+    db.from('tenants').select('*').eq('is_active',true).eq('landlord_id',U.id)
+  ]);
+  const el=document.getElementById('buildings-content');
+  if(!b.data?.length){el.innerHTML=`<div class="empty"><div class="empty-icon">🏢</div>No buildings yet.</div>`;return;}
+  el.innerHTML=`<div class="bgrid">${b.data.map(bld=>{
+    const bR=(r.data||[]).filter(x=>x.building_id===bld.id);
+    const bT=(ten.data||[]).filter(x=>bR.some(r=>r.id===x.room_id));
+    const vac=bR.filter(x=>!x.is_occupied).length;
+    return`<div class="bcard"><div class="bcard-icon">🏢</div><div class="bcard-name">${bld.name}</div><div class="bcard-addr">${bld.address||'No address'}</div><div class="bcard-stats"><span class="bcard-stat"><span>${bR.length}</span> rooms</span><span class="bcard-stat"><span>${bT.length}</span> tenants</span><span class="bcard-stat" style="color:var(--amber);"><span>${vac}</span> vacant</span></div><div style="display:flex;gap:6px;flex-wrap:wrap;"><button class="btn btn-p btn-s" onclick="viewRooms('${bld.id}','${bld.name}')">View Rooms</button><button class="btn btn-e btn-s" onclick="editBuilding('${bld.id}','${bld.name}','${bld.address||''}')">✏️ Edit</button><button class="btn btn-d btn-s" onclick="deleteBuilding('${bld.id}')">Delete</button></div></div>`;
+  }).join('')}</div>`;
+}
+function openBModal(){document.getElementById('bm-id').value='';document.getElementById('bm-name').value='';document.getElementById('bm-addr').value='';document.getElementById('bm-ttl').textContent=t('addBuilding');document.getElementById('b-modal').classList.add('open');}
+function editBuilding(id,name,addr){document.getElementById('bm-id').value=id;document.getElementById('bm-name').value=name;document.getElementById('bm-addr').value=addr;document.getElementById('bm-ttl').textContent='Edit Building';document.getElementById('b-modal').classList.add('open');}
+async function saveBuilding(){
+  const id=document.getElementById('bm-id').value;const name=document.getElementById('bm-name').value.trim();const addr=document.getElementById('bm-addr').value.trim();
+  if(!name){showAlert('Name required!','error');return;}
+  if(id) await db.from('buildings').update({name,address:addr||null}).eq('id',id);
+  else await db.from('buildings').insert({name,address:addr||null,landlord_id:U.id});
+  closeModal('b-modal');showAlert(id?'Building updated!':'Building added!');loadBuildings();
+}
+async function deleteBuilding(id){if(!confirm('Delete this building?'))return;await db.from('rooms').delete().eq('building_id',id);await db.from('buildings').delete().eq('id',id);showAlert('Deleted!');loadBuildings();}
+
+async function viewRooms(bid,bname){
+  CB=bid;document.getElementById('brooms-title').textContent='🏢 '+bname;
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('s-brooms').classList.add('active');
+  await loadBRooms();
+}
+async function loadBRooms(){
+  const {data}=await db.from('rooms').select('*').eq('building_id',CB).order('room_number');
+  const {data:tens}=await db.from('tenants').select('*').eq('is_active',true);
+  const el=document.getElementById('brooms-content');
+  if(!data?.length){el.innerHTML='<div class="empty"><div class="empty-icon">🚪</div>No rooms yet.</div>';return;}
+  el.innerHTML=`<table><thead><tr><th>Room</th><th>Floor</th><th>Status</th><th>Tenant</th><th>Action</th></tr></thead><tbody>${data.map(r=>{const tn=tens?.find(x=>x.room_id===r.id);return`<tr><td style="font-weight:700;">Room ${r.room_number}</td><td>${r.floor||'—'}</td><td><span class="badge ${r.is_occupied?'b-occupied':'b-vacant'}">${r.is_occupied?'Occupied':'Vacant'}</span></td><td>${tn?tn.name:'—'}</td><td><button class="btn btn-d btn-s" onclick="deleteRoom('${r.id}')">Delete</button></td></tr>`;}).join('')}</tbody></table>`;
+}
+function openRModal(){document.getElementById('rm-num').value='';document.getElementById('rm-floor').value='';document.getElementById('r-modal').classList.add('open');}
+async function saveRoom(){const num=document.getElementById('rm-num').value.trim();const floor=document.getElementById('rm-floor').value.trim();if(!num){showAlert('Room number required!','error');return;}await db.from('rooms').insert({room_number:num,floor:floor||null,building_id:CB});closeModal('r-modal');showAlert('Room added!');loadBRooms();}
+async function deleteRoom(id){if(!confirm('Delete room?'))return;await db.from('rooms').delete().eq('id',id);showAlert('Deleted!');loadBRooms();}
+
+// TENANTS
+async function loadTenants(){
+  const {data}=await db.from('tenants').select('*').eq('is_active',true).eq('landlord_id',U.id).order('created_at',{ascending:false});
+  const {data:rooms}=await db.from('rooms').select('*,buildings(name)');
+  const el=document.getElementById('tenants-content');
+  if(!data?.length){el.innerHTML=`<div class="empty"><div class="empty-icon">👥</div>${t('notenants')}</div>`;return;}
+  el.innerHTML=`<table><thead><tr><th>Tenant</th><th>Building / Room</th><th>Rent</th><th>Phone</th><th>Actions</th></tr></thead><tbody>${data.map(tn=>{const r=rooms?.find(x=>x.id===tn.room_id);return`<tr onclick="showTDetail('${tn.id}')" style="cursor:pointer;"><td><div style="display:flex;align-items:center;gap:10px;"><div class="av" style="width:38px;height:38px;font-size:13px;">${ini(tn.name)}</div><div><div style="font-weight:700;">${tn.name}</div><div style="font-size:11px;color:var(--sub);">${tn.occupation||''}</div></div></div></td><td>${r?.buildings?.name||'—'} / Room ${r?.room_number||'—'}</td><td style="font-weight:700;">₹${fmt(tn.monthly_rent)}</td><td>${tn.phone}</td><td style="display:flex;gap:5px;flex-wrap:wrap;"><button class="btn btn-c btn-s" onclick="event.stopPropagation();window.location='tel:${tn.phone}'">📞</button><button class="btn btn-w btn-s" onclick="event.stopPropagation();openWA('${tn.phone}','${tn.name}')">💬</button><button class="btn btn-d btn-s" onclick="event.stopPropagation();openMO('${tn.id}')">Move Out</button></td></tr>`;}).join('')}</tbody></table>`;
+}
+async function openTModal(){
+  const {data}=await db.from('buildings').select('*').eq('landlord_id',U.id);
+  document.getElementById('tm-bld').innerHTML='<option value="">Select Building</option>'+(data||[]).map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
+  document.getElementById('tm-room').innerHTML='<option value="">Select Room</option>';
+  ['tm-name','tm-ph','tm-occ','tm-emg','tm-rent','tm-dep','tm-in','tm-out','tm-pin'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('t-modal').classList.add('open');
+}
+async function loadRoomsDD(){
+  const bid=document.getElementById('tm-bld').value;if(!bid)return;
+  const {data}=await db.from('rooms').select('*').eq('building_id',bid).eq('is_occupied',false);
+  document.getElementById('tm-room').innerHTML='<option value="">Select Room</option>'+(data||[]).map(r=>`<option value="${r.id}">Room ${r.room_number}${r.floor?' ('+r.floor+')':''}</option>`).join('');
+}
+async function saveTenant(){
+  const name=document.getElementById('tm-name').value.trim();const ph=document.getElementById('tm-ph').value.trim();const rent=document.getElementById('tm-rent').value;const roomId=document.getElementById('tm-room').value;const pin=document.getElementById('tm-pin').value.trim();
+  if(!name||!ph||!rent){showAlert('Name, phone and rent required!','error');return;}
+  const {error}=await db.from('tenants').insert({name,phone:ph,occupation:document.getElementById('tm-occ').value.trim()||null,emergency_contact:document.getElementById('tm-emg').value.trim()||null,id_proof_type:document.getElementById('tm-id').value,room_id:roomId||null,monthly_rent:Number(rent),security_deposit:Number(document.getElementById('tm-dep').value||0),move_in_date:document.getElementById('tm-in').value||null,move_out_date:document.getElementById('tm-out').value||null,pin:pin||null,pin_set:!!pin,is_active:true,landlord_id:U.id});
+  if(error){showAlert('Error: '+error.message,'error');return;}
+  if(roomId)await db.from('rooms').update({is_occupied:true}).eq('id',roomId);
+  closeModal('t-modal');showAlert('Tenant added!');loadTenants();
+}
+async function showTDetail(id){
+  CT=id;
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('s-tdetail').classList.add('active');
+  const [ten,pays,bills,rooms]=await Promise.all([db.from('tenants').select('*').eq('id',id).single(),db.from('payments').select('*').eq('tenant_id',id).order('created_at',{ascending:false}),db.from('bills').select('*').eq('tenant_id',id).order('created_at',{ascending:false}),db.from('rooms').select('*,buildings(name)')]);
+  const tn=ten.data;const r=rooms.data?.find(x=>x.id===tn.room_id);
+  const P=pays.data||[];const B=bills.data||[];
+  const pd=P.filter(p=>p.month===getM()).reduce((s,p)=>s+Number(p.amount),0);
+  const st=pd>=tn.monthly_rent;
+  document.getElementById('tdetail-content').innerHTML=`
+    <div class="card">
+      <div class="dh">
+        <div class="av" style="width:64px;height:64px;font-size:22px;">${ini(tn.name)}</div>
+        <div style="flex:1;"><div style="font-size:22px;font-weight:800;">${tn.name}</div><div style="font-size:13px;color:var(--sub);">${tn.occupation||'—'} · ${r?.buildings?.name||'—'} · Room ${r?.room_number||'—'}</div></div>
+        <span class="badge ${st?'b-paid':'b-late'} " style="font-size:13px;padding:6px 14px;">${st?'✓ Paid':'⚠ Due'}</span>
+      </div>
+      <div class="igrid">
+        <div class="ii"><div class="lbl">Phone</div><div class="val">${tn.phone}</div></div>
+        <div class="ii"><div class="lbl">Emergency</div><div class="val">${tn.emergency_contact||'—'}</div></div>
+        <div class="ii"><div class="lbl">Monthly Rent</div><div class="val" style="color:var(--gd);font-size:18px;">₹${fmt(tn.monthly_rent)}</div></div>
+        <div class="ii"><div class="lbl">Security Deposit</div><div class="val">₹${fmt(tn.security_deposit)}</div></div>
+        <div class="ii"><div class="lbl">Paid This Month</div><div class="val" style="color:var(--gd);">₹${fmt(pd)}</div></div>
+        <div class="ii"><div class="lbl">Balance</div><div class="val" style="color:${st?'var(--gd)':'var(--red)'};">₹${fmt(Math.max(0,tn.monthly_rent-pd))}</div></div>
+        <div class="ii"><div class="lbl">Move-in Date</div><div class="val">${tn.move_in_date||'—'}</div></div>
+        <div class="ii"><div class="lbl">ID Proof</div><div class="val">${tn.id_proof_type||'—'}</div></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-c" onclick="window.location='tel:${tn.phone}'">📞 Call</button>
+        <button class="btn btn-w" onclick="openWA('${tn.phone}','${tn.name}')">💬 WhatsApp</button>
+        <button class="btn btn-p" onclick="openPForTen('${tn.id}','${tn.name}')">💰 Record Payment</button>
+        <button class="btn btn-o" onclick="showReceipt('${tn.id}')">🧾 Receipt</button>
+        <button class="btn btn-d" onclick="openMO('${tn.id}')">🚪 Move Out</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="tabs"><button class="tab active" onclick="stab('tp','tb',this)">💰 Payments</button><button class="tab" onclick="stab('tb','tp',this)">⚡ Bills</button></div>
+      <div id="tp" class="tc active">${P.length?`<div class="tbl-wrap"><table><thead><tr><th>Month</th><th>Amount</th><th>Type</th><th>Date</th></tr></thead><tbody>${P.map(p=>`<tr><td>${p.month}</td><td style="color:var(--gd);font-weight:700;">₹${fmt(p.amount)}</td><td>${p.payment_type}</td><td>${new Date(p.payment_date).toLocaleDateString('en-IN')}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">No payments yet.</div>'}</div>
+      <div id="tb" class="tc">${B.length?`<div class="tbl-wrap"><table><thead><tr><th>Month</th><th>Electricity</th><th>Water</th><th>Garbage</th><th>Total</th></tr></thead><tbody>${B.map(b=>`<tr><td>${b.month}</td><td>₹${fmt(b.electricity)}</td><td>₹${fmt(b.water)}</td><td>₹${fmt(b.garbage)}</td><td style="font-weight:700;">₹${fmt(Number(b.electricity)+Number(b.water)+Number(b.garbage))}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">No bills yet.</div>'}</div>
+    </div>`;
+}
+function stab(show,hide,btn){document.getElementById(show).classList.add('active');document.getElementById(hide).classList.remove('active');btn.parentElement.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
+
+// MOVE OUT
+function openMO(id){MOT=id;document.getElementById('mo-date').value=new Date().toISOString().split('T')[0];document.getElementById('mo-modal').classList.add('open');}
+async function confirmMO(){
+  const date=document.getElementById('mo-date').value;if(!date){showAlert('Date required!','error');return;}
+  const {data:tn}=await db.from('tenants').select('*,rooms(room_number,buildings(name))').eq('id',MOT).single();
+  await db.from('tenants').update({is_active:false,moved_out_date:date,moved_out_room:tn.rooms?.room_number||null,moved_out_building:tn.rooms?.buildings?.name||null}).eq('id',MOT);
+  if(tn.room_id)await db.from('rooms').update({is_occupied:false}).eq('id',tn.room_id);
+  closeModal('mo-modal');showAlert(tn.name+' moved out!');showScreen('tenants');
+}
+async function loadMoveout(){
+  const {data}=await db.from('tenants').select('*').eq('is_active',false).eq('landlord_id',U.id).order('moved_out_date',{ascending:false});
+  const el=document.getElementById('moveout-content');
+  if(!data?.length){el.innerHTML='<div class="empty"><div class="empty-icon">📦</div>No move-out history.</div>';return;}
+  el.innerHTML=data.map(tn=>`<div class="moveout-item"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;"><div><div style="font-weight:700;font-size:15px;">${tn.name}</div><div style="font-size:12px;color:var(--sub);margin-top:3px;">📞 ${tn.phone} · 🏢 ${tn.moved_out_building||'—'} · 🚪 Room ${tn.moved_out_room||'—'}</div><div style="font-size:12px;color:var(--sub);">Moved out: ${tn.moved_out_date||'—'} · Rent: ₹${fmt(tn.monthly_rent)}/mo</div></div><span class="badge b-moved">Moved Out</span></div></div>`).join('');
+}
+
+// PAYMENTS
+async function loadPayments(){
+  const {data}=await db.from('payments').select('*,tenants(name)').order('created_at',{ascending:false});
+  const el=document.getElementById('payments-content');
+  if(!data?.length){el.innerHTML='<div class="empty"><div class="empty-icon">💰</div>No payments yet.</div>';return;}
+  el.innerHTML=`<table><thead><tr><th>Tenant</th><th>Amount</th><th>Month</th><th>Type</th><th>Date</th><th>Action</th></tr></thead><tbody>${data.map(p=>`<tr><td style="font-weight:600;">${p.tenants?.name||'—'}</td><td style="color:var(--gd);font-weight:700;">₹${fmt(p.amount)}</td><td>${p.month}</td><td>${p.payment_type}</td><td>${new Date(p.payment_date).toLocaleDateString('en-IN')}</td><td><button class="btn btn-d btn-s" onclick="delPayment('${p.id}')">Delete</button></td></tr>`).join('')}</tbody></table>`;
+}
+async function openPModal(){await loadTenSel('pm-ten');document.getElementById('pm-mo').value=getM();document.getElementById('pm-amt').value='';document.getElementById('p-modal').classList.add('open');}
+async function openPForTen(id){await loadTenSel('pm-ten',id);document.getElementById('pm-mo').value=getM();document.getElementById('pm-amt').value='';document.getElementById('p-modal').classList.add('open');}
+async function loadTenSel(selId,selId2=null){const {data}=await db.from('tenants').select('id,name').eq('is_active',true).eq('landlord_id',U.id).order('name');document.getElementById(selId).innerHTML='<option value="">Select</option>'+(data||[]).map(t=>`<option value="${t.id}" ${t.id===selId2?'selected':''}>${t.name}</option>`).join('');}
+async function savePayment(){const tid=document.getElementById('pm-ten').value;const amt=document.getElementById('pm-amt').value;const mo=document.getElementById('pm-mo').value;const type=document.getElementById('pm-type').value;if(!tid||!amt||!mo){showAlert('All required!','error');return;}await db.from('payments').insert({tenant_id:tid,amount:Number(amt),month:mo,payment_type:type,payment_date:new Date().toISOString().split('T')[0]});closeModal('p-modal');showAlert('Payment recorded!');loadPayments();}
+async function delPayment(id){if(!confirm('Delete?'))return;await db.from('payments').delete().eq('id',id);showAlert('Deleted!');loadPayments();}
+
+// BILLS
+async function loadBills(){
+  const {data}=await db.from('bills').select('*,tenants(name)').order('created_at',{ascending:false});
+  const el=document.getElementById('bills-content');
+  if(!data?.length){el.innerHTML='<div class="empty"><div class="empty-icon">⚡</div>No bills yet.</div>';return;}
+  el.innerHTML=`<table><thead><tr><th>Tenant</th><th>Month</th><th>Electricity</th><th>Water</th><th>Garbage</th><th>Total</th><th>Action</th></tr></thead><tbody>${data.map(b=>`<tr><td style="font-weight:600;">${b.tenants?.name||'—'}</td><td>${b.month}</td><td>₹${fmt(b.electricity)}</td><td>₹${fmt(b.water)}</td><td>₹${fmt(b.garbage)}</td><td style="font-weight:700;">₹${fmt(Number(b.electricity)+Number(b.water)+Number(b.garbage))}</td><td><button class="btn btn-d btn-s" onclick="delBill('${b.id}')">Delete</button></td></tr>`).join('')}</tbody></table>`;
+}
+async function openBillModal(){await loadTenSel('bl-ten');document.getElementById('bl-mo').value=getM();document.getElementById('bl-el').value='';document.getElementById('bl-wa').value=U.default_water_bill||'';document.getElementById('bl-ga').value=U.default_garbage_bill||'';document.getElementById('bill-modal').classList.add('open');}
+async function saveBill(){const tid=document.getElementById('bl-ten').value;const mo=document.getElementById('bl-mo').value;if(!tid||!mo){showAlert('Required!','error');return;}await db.from('bills').insert({tenant_id:tid,month:mo,electricity:Number(document.getElementById('bl-el').value||0),water:Number(document.getElementById('bl-wa').value||0),garbage:Number(document.getElementById('bl-ga').value||0)});closeModal('bill-modal');showAlert('Bill added!');loadBills();}
+async function delBill(id){if(!confirm('Delete?'))return;await db.from('bills').delete().eq('id',id);showAlert('Deleted!');loadBills();}
+
+// REPORTS
+async function loadReports(){
+  const [ten,pay]=await Promise.all([db.from('tenants').select('*').eq('is_active',true).eq('landlord_id',U.id),db.from('payments').select('*').order('month')]);
+  const T=ten.data||[],P=pay.data||[];
+  const tIds=T.map(x=>x.id);const myP=P.filter(p=>tIds.includes(p.tenant_id));
+  const col=myP.filter(p=>p.month===getM()).reduce((s,p)=>s+Number(p.amount),0);
+  const tot=T.reduce((s,t)=>s+Number(t.monthly_rent),0);
+  const all=myP.reduce((s,p)=>s+Number(p.amount),0);
+  document.getElementById('rep-metrics').innerHTML=`<div class="metric green"><div class="m-lbl">This Month</div><div class="m-val g">₹${fmt(col)}</div></div><div class="metric red"><div class="m-lbl">Pending</div><div class="m-val r">₹${fmt(Math.max(0,tot-col))}</div></div><div class="metric blue"><div class="m-lbl">Total Tenants</div><div class="m-val">${T.length}</div></div><div class="metric green"><div class="m-lbl">All Time Income</div><div class="m-val g">₹${fmt(all)}</div></div>`;
+  const months=[];for(let i=5;i>=0;i--){const d=new Date();d.setMonth(d.getMonth()-i);months.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));}
+  const mD=months.map(m=>({m,c:myP.filter(p=>p.month===m).reduce((s,p)=>s+Number(p.amount),0)}));
+  const max=Math.max(...mD.map(x=>x.c),1);
+  document.getElementById('rep-chart').innerHTML=`<div class="chart">${mD.map(x=>`<div class="bc"><div class="ba">${x.c?'₹'+fmt(x.c):''}</div><div class="bf" style="height:${Math.round(x.c/max*150)}px;" title="₹${fmt(x.c)}"></div><div class="bl">${x.m.slice(5)}</div></div>`).join('')}</div>`;
+  document.getElementById('rep-table').innerHTML=`<table><thead><tr><th>Month</th><th>Collected</th><th>Expected</th><th>Pending</th></tr></thead><tbody>${mD.map(x=>`<tr><td>${x.m}</td><td style="color:var(--gd);font-weight:700;">₹${fmt(x.c)}</td><td>₹${fmt(tot)}</td><td style="color:${x.c>=tot?'var(--gd)':'var(--red)'};">₹${fmt(Math.max(0,tot-x.c))}</td></tr>`).join('')}</tbody></table>`;
+}
+
+// RECEIPT
+async function showReceipt(tenantId){
+  const [ten,pays,bills,rooms]=await Promise.all([db.from('tenants').select('*').eq('id',tenantId).single(),db.from('payments').select('*').eq('tenant_id',tenantId).eq('month',getM()),db.from('bills').select('*').eq('tenant_id',tenantId).eq('month',getM()),db.from('rooms').select('*,buildings(name)')]);
+  const tn=ten.data;const r=rooms.data?.find(x=>x.id===tn.room_id);
+  const pd=(pays.data||[]).reduce((s,p)=>s+Number(p.amount),0);
+  const bill=bills.data?.[0];const tb=bill?Number(bill.electricity)+Number(bill.water)+Number(bill.garbage):0;
+  const txt=`KirayaTrack Rent Receipt\nTenant: ${tn.name}\nPhone: ${tn.phone}\nBuilding: ${r?.buildings?.name||'—'}\nRoom: ${r?.room_number||'—'}\nPeriod: ${getM()}\nRent: ₹${fmt(tn.monthly_rent)}\nBills: ₹${fmt(tb)}\nTotal Paid: ₹${fmt(pd)}\nBalance: ₹${fmt(Math.max(0,tn.monthly_rent-pd))}\nStatus: ${pd>=tn.monthly_rent?'PAID':'PENDING'}\nDate: ${new Date().toLocaleDateString('en-IN')}`;
+  document.getElementById('rcpt-content').innerHTML=`<div class="rcpt"><div class="rcpt-logo"><div style="font-size:28px;">🏠</div><div style="font-size:18px;font-weight:800;margin-top:4px;">KirayaTrack</div><div style="font-size:12px;color:var(--sub);">Rent Receipt — ${getM()}</div></div><div class="rcpt-row"><span>Tenant</span><span><b>${tn.name}</b></span></div><div class="rcpt-row"><span>Phone</span><span>${tn.phone}</span></div><div class="rcpt-row"><span>Building / Room</span><span>${r?.buildings?.name||'—'} / Room ${r?.room_number||'—'}</span></div><div class="rcpt-row"><span>Monthly Rent</span><span>₹${fmt(tn.monthly_rent)}</span></div>${bill?`<div class="rcpt-row"><span>Electricity</span><span>₹${fmt(bill.electricity)}</span></div><div class="rcpt-row"><span>Water</span><span>₹${fmt(bill.water)}</span></div><div class="rcpt-row"><span>Garbage</span><span>₹${fmt(bill.garbage)}</span></div>`:''}<div class="rcpt-row"><span>Total Bills</span><span>₹${fmt(tb)}</span></div><div class="rcpt-row"><span>Amount Paid</span><span style="color:var(--gd);">₹${fmt(pd)}</span></div><div class="rcpt-row"><span>Balance</span><span style="color:${pd>=tn.monthly_rent?'var(--gd)':'var(--red)'};">₹${fmt(Math.max(0,tn.monthly_rent-pd))}</span></div><div class="rcpt-row"><span>Status</span><span>${pd>=tn.monthly_rent?'✅ PAID':'⚠️ PENDING'}</span></div><div class="rcpt-row"><span>Generated</span><span>${new Date().toLocaleDateString('en-IN')}</span></div></div>`;
+  document.getElementById('wa-btn').onclick=()=>openWA(tn.phone,tn.name,txt);
+  document.getElementById('rcpt-modal').classList.add('open');
+}
+
+function openWA(phone,name,msg=null){
+  const m=msg||`Hi ${name}, your rent for ${getM()} is due. Please pay at the earliest. - KirayaTrack`;
+  const n=phone.replace(/\D/g,'');window.open('https://wa.me/'+(n.startsWith('91')?n:'91'+n)+'?text='+encodeURIComponent(m),'_blank');
+}
+
+// TENANT PORTAL
+async function loadMyDetails(){
+  if(U.type!=='tenant')return;
+  const [pays,bills,rooms]=await Promise.all([db.from('payments').select('*').eq('tenant_id',U.id).order('created_at',{ascending:false}),db.from('bills').select('*').eq('tenant_id',U.id).order('created_at',{ascending:false}),db.from('rooms').select('*,buildings(name)')]);
+  const r=rooms.data?.find(x=>x.id===U.room_id);
+  const P=pays.data||[];const B=bills.data||[];
+  const pd=P.filter(p=>p.month===getM()).reduce((s,p)=>s+Number(p.amount),0);
+  const st=pd>=U.monthly_rent;
+  document.getElementById('mydetails-content').innerHTML=`
+    <div class="card">
+      <div class="dh">
+        <div class="av" style="width:64px;height:64px;font-size:22px;">${ini(U.name)}</div>
+        <div style="flex:1;"><div style="font-size:22px;font-weight:800;">${U.name}</div><div style="font-size:13px;color:var(--sub);">${r?.buildings?.name||'—'} · Room ${r?.room_number||'—'}</div></div>
+        <span class="badge ${st?'b-paid':'b-late'}" style="font-size:13px;padding:6px 14px;">${st?'✓ Paid':'⚠ Due'}</span>
+      </div>
+      <div class="igrid">
+        <div class="ii"><div class="lbl">Phone</div><div class="val">${U.phone}</div></div>
+        <div class="ii"><div class="lbl">Monthly Rent</div><div class="val" style="color:var(--gd);font-size:18px;">₹${fmt(U.monthly_rent)}</div></div>
+        <div class="ii"><div class="lbl">Paid This Month</div><div class="val" style="color:var(--gd);">₹${fmt(pd)}</div></div>
+        <div class="ii"><div class="lbl">Balance</div><div class="val" style="color:${st?'var(--gd)':'var(--red)'};">₹${fmt(Math.max(0,U.monthly_rent-pd))}</div></div>
+        <div class="ii"><div class="lbl">Security Deposit</div><div class="val">₹${fmt(U.security_deposit)}</div></div>
+        <div class="ii"><div class="lbl">Move-in Date</div><div class="val">${U.move_in_date||'—'}</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="tabs"><button class="tab active" onclick="stab('my-p','my-b',this)">${t('mydetails')} — Payments</button><button class="tab" onclick="stab('my-b','my-p',this)">Bills</button></div>
+      <div id="my-p" class="tc active">${P.length?`<div class="tbl-wrap"><table><thead><tr><th>Month</th><th>Amount</th><th>Type</th><th>Date</th></tr></thead><tbody>${P.map(p=>`<tr><td>${p.month}</td><td style="color:var(--gd);font-weight:700;">₹${fmt(p.amount)}</td><td>${p.payment_type}</td><td>${new Date(p.payment_date).toLocaleDateString('en-IN')}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">No payments yet.</div>'}</div>
+      <div id="my-b" class="tc">${B.length?`<div class="tbl-wrap"><table><thead><tr><th>Month</th><th>Electricity</th><th>Water</th><th>Garbage</th><th>Total</th></tr></thead><tbody>${B.map(b=>`<tr><td>${b.month}</td><td>₹${fmt(b.electricity)}</td><td>₹${fmt(b.water)}</td><td>₹${fmt(b.garbage)}</td><td style="font-weight:700;">₹${fmt(Number(b.electricity)+Number(b.water)+Number(b.garbage))}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">No bills yet.</div>'}</div>
+    </div>`;
+}
+
+// AUTO LOGIN
+(function(){
+  const ll=localStorage.getItem('kt-ll');const tn=localStorage.getItem('kt-tn');
+  if(ll){U={...JSON.parse(ll),type:'landlord',lang:JSON.parse(ll).language||'english'};initApp();}
+  else if(tn){U={...JSON.parse(tn),type:'tenant',lang:JSON.parse(tn).language||'english'};initApp();}
+})();
+</script>
+</body>
+</html>
