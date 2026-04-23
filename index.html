@@ -4,7 +4,101 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KirayaTrack</title>
-<script src="https://cdn.jsdelivr.net/npm/datavault-sdk@latest/dist/datavault.min.js"></script>
+<script>
+// Custom DataVault Client
+class DataVault {
+  constructor(apiKey) {
+    this.apiKey = apiKey;
+    this.baseURL = 'http://localhost:3000/api';
+  }
+
+  from(table) {
+    return new DataVaultQuery(this.baseURL, table);
+  }
+}
+
+class DataVaultQuery {
+  constructor(baseURL, table) {
+    this.baseURL = baseURL;
+    this.table = table;
+    this.filters = {};
+    this.selectFields = '*';
+    this.orderBy = null;
+  }
+
+  select(fields = '*') {
+    this.selectFields = fields;
+    return this;
+  }
+
+  eq(field, value) {
+    this.filters[`eq.${field}`] = value;
+    return this;
+  }
+
+  order(field, options = {}) {
+    this.orderBy = options.ascending === false ? `${field}.desc` : `${field}.asc`;
+    return this;
+  }
+
+  async execute(method = 'GET', body = null) {
+    const url = new URL(`${this.baseURL}/${this.table}`);
+    url.searchParams.set('select', this.selectFields);
+
+    Object.keys(this.filters).forEach(key => {
+      url.searchParams.set(key, this.filters[key]);
+    });
+
+    if (this.orderBy) {
+      url.searchParams.set('order', this.orderBy);
+    }
+
+    const options = {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    };
+
+    if (body) {
+      options.body = JSON.stringify(body);
+    }
+
+    try {
+      const response = await fetch(url.toString(), options);
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error('DataVault Error:', error);
+      return { data: null, error: error.message };
+    }
+  }
+
+  async single() {
+    const result = await this.execute();
+    if (result.data && result.data.length > 0) {
+      return { data: result.data[0], error: result.error };
+    }
+    return { data: null, error: 'No data found' };
+  }
+
+  async insert(data) {
+    const result = await this.execute('POST', data);
+    return result;
+  }
+
+  async update(updates) {
+    const result = await this.execute('PATCH', updates);
+    return result;
+  }
+
+  async delete() {
+    const result = await this.execute('DELETE');
+    return result;
+  }
+}
+
+const dv = new DataVault('04b653d44e291c584adbe3c76c6c9c3c');
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 :root{
