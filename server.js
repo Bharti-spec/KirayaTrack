@@ -12,6 +12,11 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static('.'));
 
+// Serve index.html at root
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 // In-memory database (for demo - replace with real database)
 let db = {
   landlords: [],

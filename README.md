@@ -2,19 +2,19 @@
 
 This is KirayaTrack with a custom backend server that replaces Supabase with your own DataVault implementation.
 
-## Setup
+## How to Run
 
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-2. Start the server:
+1. Start the server:
    ```bash
    npm start
    ```
 
-3. Open `index.html` in your browser
+2. Open in browser:
+   ```
+   http://localhost:3000
+   ```
+
+**Important**: Do NOT open `index.html` directly from file system. Always access through `http://localhost:3000` to avoid CORS issues.
 
 ## Features
 
