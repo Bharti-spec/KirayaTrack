@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KirayaTrack</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/datavault-sdk@latest/dist/datavault.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 :root{
@@ -471,10 +471,7 @@ tbody tr:hover{background:var(--gl);}
 </div></div>
 
 <script>
-const SB='https://lleerkkyjunnnwnblqft.supabase.co';
-const SK='sb_publishable_zjU1RttLCBRXdcVRWe8SjA_7E78E-s5';
-const {createClient}=supabase;
-const db=createClient(SB,SK);
+const dv = new DataVault('04b653d44e291c584adbe3c76c6c9c3c');
 
 let U=null,CB=null,CT=null,MOT=null,SL='english';
 
@@ -520,7 +517,7 @@ async function llLogin(){
   const em=document.getElementById('ll-em').value.trim();
   const pw=document.getElementById('ll-pw').value;
   if((!ph&&!em)||!pw){showAuthErr('ll-err','Phone/email and password required!');return;}
-  let q=db.from('landlords').select('*');
+  let q=dv.from('landlords').select('*');
   if(ph) q=q.eq('phone',ph); else q=q.eq('email',em);
   const {data,error}=await q.single();
   if(error||!data){showAuthErr('ll-err','Account not found!');return;}
@@ -540,9 +537,9 @@ async function llRegister(){
   if(!name||!ph||!pw){showAuthErr('lr-err','Name, phone and password required!');return;}
   if(pw!==pw2){showAuthErr('lr-err','Passwords do not match!');return;}
   if(pw.length<6){showAuthErr('lr-err','Password must be 6+ characters!');return;}
-  const {data:ex}=await db.from('landlords').select('id').eq('phone',ph);
+  const {data:ex}=await dv.from('landlords').select('id').eq('phone',ph);
   if(ex?.length){showAuthErr('lr-err','Phone already registered!');return;}
-  const {data,error}=await db.from('landlords').insert({name,phone:ph,email:em||null,password_hash:btoa(pw),language:'english',default_water_bill:0,default_garbage_bill:0}).select().single();
+  const {data,error}=await dv.from('landlords').insert({name,phone:ph,email:em||null,password_hash:btoa(pw),language:'english',default_water_bill:0,default_garbage_bill:0}).select().single();
   if(error){showAuthErr('lr-err','Error: '+error.message);return;}
   localStorage.setItem('kt-ll',JSON.stringify(data));
   U={...data,type:'landlord',lang:'english'};
@@ -554,7 +551,7 @@ async function tnLogin(){
   const ph=document.getElementById('tn-ph').value.trim();
   const pin=document.getElementById('tn-pin').value.trim();
   if(!ph||!pin){showAuthErr('tn-err','Phone and PIN required!');return;}
-  const {data,error}=await db.from('tenants').select('*').eq('phone',ph).eq('pin',pin).eq('is_active',true).single();
+  const {data,error}=await dv.from('tenants').select('*').eq('phone',ph).eq('pin',pin).eq('is_active',true).single();
   if(error||!data){showAuthErr('tn-err','Wrong phone or PIN!');return;}
   localStorage.setItem('kt-tn',JSON.stringify(data));
   U={...data,type:'tenant',lang:data.language||'english'};
@@ -572,7 +569,7 @@ function pickLang(lang,el){
 }
 async function confirmLang(){
   if(U.type==='landlord'){
-    await db.from('landlords').update({language:SL}).eq('id',U.id);
+    await dv.from('landlords').update({language:SL}).eq('id',U.id);
     U.lang=SL;
     const s=JSON.parse(localStorage.getItem('kt-ll')||'{}');s.language=SL;localStorage.setItem('kt-ll',JSON.stringify(s));
   }
@@ -583,7 +580,7 @@ function openLangChange(){
   document.getElementById('lang-page').style.display='flex';
   document.getElementById('app').style.display='none';
   document.querySelector('#lang-page .auth-btn').onclick=async()=>{
-    if(U.type==='landlord'){await db.from('landlords').update({language:SL}).eq('id',U.id);U.lang=SL;}
+    if(U.type==='landlord'){await dv.from('landlords').update({language:SL}).eq('id',U.id);U.lang=SL;}
     document.getElementById('lang-page').style.display='none';
     document.getElementById('app').style.display='';
     applyLang();
@@ -662,22 +659,22 @@ function logout(){localStorage.removeItem('kt-ll');localStorage.removeItem('kt-t
 // SETTINGS
 async function loadSettings(){
   if(!U||U.type!=='landlord')return;
-  const {data}=await db.from('landlords').select('*').eq('id',U.id).single();
+  const {data}=await dv.from('landlords').select('*').eq('id',U.id).single();
   if(data){U.default_water_bill=data.default_water_bill||0;U.default_garbage_bill=data.default_garbage_bill||0;document.getElementById('sw').value=data.default_water_bill||0;document.getElementById('sg').value=data.default_garbage_bill||0;}
 }
 async function saveSettings(){
   const w=Number(document.getElementById('sw').value||0);const g=Number(document.getElementById('sg').value||0);
-  await db.from('landlords').update({default_water_bill:w,default_garbage_bill:g}).eq('id',U.id);
+  await dv.from('landlords').update({default_water_bill:w,default_garbage_bill:g}).eq('id',U.id);
   U.default_water_bill=w;U.default_garbage_bill=g;showAlert('Settings saved!');
 }
 
 // DASHBOARD
 async function loadDashboard(){
   const [b,r,ten,pay]=await Promise.all([
-    db.from('buildings').select('*').eq('landlord_id',U.id),
-    db.from('rooms').select('*'),
-    db.from('tenants').select('*').eq('is_active',true).eq('landlord_id',U.id),
-    db.from('payments').select('*').eq('month',getM())
+    dv.from('buildings').select('*').eq('landlord_id',U.id),
+    dv.from('rooms').select('*'),
+    dv.from('tenants').select('*').eq('is_active',true).eq('landlord_id',U.id),
+    dv.from('payments').select('*').eq('month',getM())
   ]);
   const B=b.data||[],R=r.data||[],T=ten.data||[],P=pay.data||[];
   const bIds=B.map(x=>x.id);
@@ -701,9 +698,9 @@ async function loadDashboard(){
 // BUILDINGS
 async function loadBuildings(){
   const [b,r,ten]=await Promise.all([
-    db.from('buildings').select('*').eq('landlord_id',U.id).order('created_at'),
-    db.from('rooms').select('*'),
-    db.from('tenants').select('*').eq('is_active',true).eq('landlord_id',U.id)
+    dv.from('buildings').select('*').eq('landlord_id',U.id).order('created_at'),
+    dv.from('rooms').select('*'),
+    dv.from('tenants').select('*').eq('is_active',true).eq('landlord_id',U.id)
   ]);
   const el=document.getElementById('buildings-content');
   if(!b.data?.length){el.innerHTML=`<div class="empty"><div class="empty-icon">🏢</div>No buildings yet.</div>`;return;}
@@ -719,11 +716,11 @@ function editBuilding(id,name,addr){document.getElementById('bm-id').value=id;do
 async function saveBuilding(){
   const id=document.getElementById('bm-id').value;const name=document.getElementById('bm-name').value.trim();const addr=document.getElementById('bm-addr').value.trim();
   if(!name){showAlert('Name required!','error');return;}
-  if(id) await db.from('buildings').update({name,address:addr||null}).eq('id',id);
-  else await db.from('buildings').insert({name,address:addr||null,landlord_id:U.id});
+  if(id) await dv.from('buildings').update({name,address:addr||null}).eq('id',id);
+  else await dv.from('buildings').insert({name,address:addr||null,landlord_id:U.id});
   closeModal('b-modal');showAlert(id?'Building updated!':'Building added!');loadBuildings();
 }
-async function deleteBuilding(id){if(!confirm('Delete this building?'))return;await db.from('rooms').delete().eq('building_id',id);await db.from('buildings').delete().eq('id',id);showAlert('Deleted!');loadBuildings();}
+async function deleteBuilding(id){if(!confirm('Delete this building?'))return;await dv.from('rooms').delete().eq('building_id',id);await dv.from('buildings').delete().eq('id',id);showAlert('Deleted!');loadBuildings();}
 
 async function viewRooms(bid,bname){
   CB=bid;document.getElementById('brooms-title').textContent='🏢 '+bname;
@@ -731,26 +728,26 @@ async function viewRooms(bid,bname){
   await loadBRooms();
 }
 async function loadBRooms(){
-  const {data}=await db.from('rooms').select('*').eq('building_id',CB).order('room_number');
-  const {data:tens}=await db.from('tenants').select('*').eq('is_active',true);
+  const {data}=await dv.from('rooms').select('*').eq('building_id',CB).order('room_number');
+  const {data:tens}=await dv.from('tenants').select('*').eq('is_active',true);
   const el=document.getElementById('brooms-content');
   if(!data?.length){el.innerHTML='<div class="empty"><div class="empty-icon">🚪</div>No rooms yet.</div>';return;}
   el.innerHTML=`<table><thead><tr><th>Room</th><th>Floor</th><th>Status</th><th>Tenant</th><th>Action</th></tr></thead><tbody>${data.map(r=>{const tn=tens?.find(x=>x.room_id===r.id);return`<tr><td style="font-weight:700;">Room ${r.room_number}</td><td>${r.floor||'—'}</td><td><span class="badge ${r.is_occupied?'b-occupied':'b-vacant'}">${r.is_occupied?'Occupied':'Vacant'}</span></td><td>${tn?tn.name:'—'}</td><td><button class="btn btn-d btn-s" onclick="deleteRoom('${r.id}')">Delete</button></td></tr>`;}).join('')}</tbody></table>`;
 }
 function openRModal(){document.getElementById('rm-num').value='';document.getElementById('rm-floor').value='';document.getElementById('r-modal').classList.add('open');}
-async function saveRoom(){const num=document.getElementById('rm-num').value.trim();const floor=document.getElementById('rm-floor').value.trim();if(!num){showAlert('Room number required!','error');return;}await db.from('rooms').insert({room_number:num,floor:floor||null,building_id:CB});closeModal('r-modal');showAlert('Room added!');loadBRooms();}
-async function deleteRoom(id){if(!confirm('Delete room?'))return;await db.from('rooms').delete().eq('id',id);showAlert('Deleted!');loadBRooms();}
+async function saveRoom(){const num=document.getElementById('rm-num').value.trim();const floor=document.getElementById('rm-floor').value.trim();if(!num){showAlert('Room number required!','error');return;}await dv.from('rooms').insert({room_number:num,floor:floor||null,building_id:CB});closeModal('r-modal');showAlert('Room added!');loadBRooms();}
+async function deleteRoom(id){if(!confirm('Delete room?'))return;await dv.from('rooms').delete().eq('id',id);showAlert('Deleted!');loadBRooms();}
 
 // TENANTS
 async function loadTenants(){
-  const {data}=await db.from('tenants').select('*').eq('is_active',true).eq('landlord_id',U.id).order('created_at',{ascending:false});
-  const {data:rooms}=await db.from('rooms').select('*,buildings(name)');
+  const {data}=await dv.from('tenants').select('*').eq('is_active',true).eq('landlord_id',U.id).order('created_at',{ascending:false});
+  const {data:rooms}=await dv.from('rooms').select('*,buildings(name)');
   const el=document.getElementById('tenants-content');
   if(!data?.length){el.innerHTML=`<div class="empty"><div class="empty-icon">👥</div>${t('notenants')}</div>`;return;}
   el.innerHTML=`<table><thead><tr><th>Tenant</th><th>Building / Room</th><th>Rent</th><th>Phone</th><th>Actions</th></tr></thead><tbody>${data.map(tn=>{const r=rooms?.find(x=>x.id===tn.room_id);return`<tr onclick="showTDetail('${tn.id}')" style="cursor:pointer;"><td><div style="display:flex;align-items:center;gap:10px;"><div class="av" style="width:38px;height:38px;font-size:13px;">${ini(tn.name)}</div><div><div style="font-weight:700;">${tn.name}</div><div style="font-size:11px;color:var(--sub);">${tn.occupation||''}</div></div></div></td><td>${r?.buildings?.name||'—'} / Room ${r?.room_number||'—'}</td><td style="font-weight:700;">₹${fmt(tn.monthly_rent)}</td><td>${tn.phone}</td><td style="display:flex;gap:5px;flex-wrap:wrap;"><button class="btn btn-c btn-s" onclick="event.stopPropagation();window.location='tel:${tn.phone}'">📞</button><button class="btn btn-w btn-s" onclick="event.stopPropagation();openWA('${tn.phone}','${tn.name}')">💬</button><button class="btn btn-d btn-s" onclick="event.stopPropagation();openMO('${tn.id}')">Move Out</button></td></tr>`;}).join('')}</tbody></table>`;
 }
 async function openTModal(){
-  const {data}=await db.from('buildings').select('*').eq('landlord_id',U.id);
+  const {data}=await dv.from('buildings').select('*').eq('landlord_id',U.id);
   document.getElementById('tm-bld').innerHTML='<option value="">Select Building</option>'+(data||[]).map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
   document.getElementById('tm-room').innerHTML='<option value="">Select Room</option>';
   ['tm-name','tm-ph','tm-occ','tm-emg','tm-rent','tm-dep','tm-in','tm-out','tm-pin'].forEach(id=>document.getElementById(id).value='');
@@ -758,21 +755,21 @@ async function openTModal(){
 }
 async function loadRoomsDD(){
   const bid=document.getElementById('tm-bld').value;if(!bid)return;
-  const {data}=await db.from('rooms').select('*').eq('building_id',bid).eq('is_occupied',false);
+  const {data}=await dv.from('rooms').select('*').eq('building_id',bid).eq('is_occupied',false);
   document.getElementById('tm-room').innerHTML='<option value="">Select Room</option>'+(data||[]).map(r=>`<option value="${r.id}">Room ${r.room_number}${r.floor?' ('+r.floor+')':''}</option>`).join('');
 }
 async function saveTenant(){
   const name=document.getElementById('tm-name').value.trim();const ph=document.getElementById('tm-ph').value.trim();const rent=document.getElementById('tm-rent').value;const roomId=document.getElementById('tm-room').value;const pin=document.getElementById('tm-pin').value.trim();
   if(!name||!ph||!rent){showAlert('Name, phone and rent required!','error');return;}
-  const {error}=await db.from('tenants').insert({name,phone:ph,occupation:document.getElementById('tm-occ').value.trim()||null,emergency_contact:document.getElementById('tm-emg').value.trim()||null,id_proof_type:document.getElementById('tm-id').value,room_id:roomId||null,monthly_rent:Number(rent),security_deposit:Number(document.getElementById('tm-dep').value||0),move_in_date:document.getElementById('tm-in').value||null,move_out_date:document.getElementById('tm-out').value||null,pin:pin||null,pin_set:!!pin,is_active:true,landlord_id:U.id});
+  const {error}=await dv.from('tenants').insert({name,phone:ph,occupation:document.getElementById('tm-occ').value.trim()||null,emergency_contact:document.getElementById('tm-emg').value.trim()||null,id_proof_type:document.getElementById('tm-id').value,room_id:roomId||null,monthly_rent:Number(rent),security_deposit:Number(document.getElementById('tm-dep').value||0),move_in_date:document.getElementById('tm-in').value||null,move_out_date:document.getElementById('tm-out').value||null,pin:pin||null,pin_set:!!pin,is_active:true,landlord_id:U.id});
   if(error){showAlert('Error: '+error.message,'error');return;}
-  if(roomId)await db.from('rooms').update({is_occupied:true}).eq('id',roomId);
+  if(roomId)await dv.from('rooms').update({is_occupied:true}).eq('id',roomId);
   closeModal('t-modal');showAlert('Tenant added!');loadTenants();
 }
 async function showTDetail(id){
   CT=id;
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('s-tdetail').classList.add('active');
-  const [ten,pays,bills,rooms]=await Promise.all([db.from('tenants').select('*').eq('id',id).single(),db.from('payments').select('*').eq('tenant_id',id).order('created_at',{ascending:false}),db.from('bills').select('*').eq('tenant_id',id).order('created_at',{ascending:false}),db.from('rooms').select('*,buildings(name)')]);
+  const [ten,pays,bills,rooms]=await Promise.all([dv.from('tenants').select('*').eq('id',id).single(),dv.from('payments').select('*').eq('tenant_id',id).order('created_at',{ascending:false}),dv.from('bills').select('*').eq('tenant_id',id).order('created_at',{ascending:false}),dv.from('rooms').select('*,buildings(name)')]);
   const tn=ten.data;const r=rooms.data?.find(x=>x.id===tn.room_id);
   const P=pays.data||[];const B=bills.data||[];
   const pd=P.filter(p=>p.month===getM()).reduce((s,p)=>s+Number(p.amount),0);
@@ -814,13 +811,13 @@ function stab(show,hide,btn){document.getElementById(show).classList.add('active
 function openMO(id){MOT=id;document.getElementById('mo-date').value=new Date().toISOString().split('T')[0];document.getElementById('mo-modal').classList.add('open');}
 async function confirmMO(){
   const date=document.getElementById('mo-date').value;if(!date){showAlert('Date required!','error');return;}
-  const {data:tn}=await db.from('tenants').select('*,rooms(room_number,buildings(name))').eq('id',MOT).single();
-  await db.from('tenants').update({is_active:false,moved_out_date:date,moved_out_room:tn.rooms?.room_number||null,moved_out_building:tn.rooms?.buildings?.name||null}).eq('id',MOT);
-  if(tn.room_id)await db.from('rooms').update({is_occupied:false}).eq('id',tn.room_id);
+  const {data:tn}=await dv.from('tenants').select('*,rooms(room_number,buildings(name))').eq('id',MOT).single();
+  await dv.from('tenants').update({is_active:false,moved_out_date:date,moved_out_room:tn.rooms?.room_number||null,moved_out_building:tn.rooms?.buildings?.name||null}).eq('id',MOT);
+  if(tn.room_id)await dv.from('rooms').update({is_occupied:false}).eq('id',tn.room_id);
   closeModal('mo-modal');showAlert(tn.name+' moved out!');showScreen('tenants');
 }
 async function loadMoveout(){
-  const {data}=await db.from('tenants').select('*').eq('is_active',false).eq('landlord_id',U.id).order('moved_out_date',{ascending:false});
+  const {data}=await dv.from('tenants').select('*').eq('is_active',false).eq('landlord_id',U.id).order('moved_out_date',{ascending:false});
   const el=document.getElementById('moveout-content');
   if(!data?.length){el.innerHTML='<div class="empty"><div class="empty-icon">📦</div>No move-out history.</div>';return;}
   el.innerHTML=data.map(tn=>`<div class="moveout-item"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;"><div><div style="font-weight:700;font-size:15px;">${tn.name}</div><div style="font-size:12px;color:var(--sub);margin-top:3px;">📞 ${tn.phone} · 🏢 ${tn.moved_out_building||'—'} · 🚪 Room ${tn.moved_out_room||'—'}</div><div style="font-size:12px;color:var(--sub);">Moved out: ${tn.moved_out_date||'—'} · Rent: ₹${fmt(tn.monthly_rent)}/mo</div></div><span class="badge b-moved">Moved Out</span></div></div>`).join('');
@@ -828,31 +825,31 @@ async function loadMoveout(){
 
 // PAYMENTS
 async function loadPayments(){
-  const {data}=await db.from('payments').select('*,tenants(name)').order('created_at',{ascending:false});
+  const {data}=await dv.from('payments').select('*,tenants(name)').order('created_at',{ascending:false});
   const el=document.getElementById('payments-content');
   if(!data?.length){el.innerHTML='<div class="empty"><div class="empty-icon">💰</div>No payments yet.</div>';return;}
   el.innerHTML=`<table><thead><tr><th>Tenant</th><th>Amount</th><th>Month</th><th>Type</th><th>Date</th><th>Action</th></tr></thead><tbody>${data.map(p=>`<tr><td style="font-weight:600;">${p.tenants?.name||'—'}</td><td style="color:var(--gd);font-weight:700;">₹${fmt(p.amount)}</td><td>${p.month}</td><td>${p.payment_type}</td><td>${new Date(p.payment_date).toLocaleDateString('en-IN')}</td><td><button class="btn btn-d btn-s" onclick="delPayment('${p.id}')">Delete</button></td></tr>`).join('')}</tbody></table>`;
 }
 async function openPModal(){await loadTenSel('pm-ten');document.getElementById('pm-mo').value=getM();document.getElementById('pm-amt').value='';document.getElementById('p-modal').classList.add('open');}
 async function openPForTen(id){await loadTenSel('pm-ten',id);document.getElementById('pm-mo').value=getM();document.getElementById('pm-amt').value='';document.getElementById('p-modal').classList.add('open');}
-async function loadTenSel(selId,selId2=null){const {data}=await db.from('tenants').select('id,name').eq('is_active',true).eq('landlord_id',U.id).order('name');document.getElementById(selId).innerHTML='<option value="">Select</option>'+(data||[]).map(t=>`<option value="${t.id}" ${t.id===selId2?'selected':''}>${t.name}</option>`).join('');}
-async function savePayment(){const tid=document.getElementById('pm-ten').value;const amt=document.getElementById('pm-amt').value;const mo=document.getElementById('pm-mo').value;const type=document.getElementById('pm-type').value;if(!tid||!amt||!mo){showAlert('All required!','error');return;}await db.from('payments').insert({tenant_id:tid,amount:Number(amt),month:mo,payment_type:type,payment_date:new Date().toISOString().split('T')[0]});closeModal('p-modal');showAlert('Payment recorded!');loadPayments();}
-async function delPayment(id){if(!confirm('Delete?'))return;await db.from('payments').delete().eq('id',id);showAlert('Deleted!');loadPayments();}
+async function loadTenSel(selId,selId2=null){const {data}=await dv.from('tenants').select('id,name').eq('is_active',true).eq('landlord_id',U.id).order('name');document.getElementById(selId).innerHTML='<option value="">Select</option>'+(data||[]).map(t=>`<option value="${t.id}" ${t.id===selId2?'selected':''}>${t.name}</option>`).join('');}
+async function savePayment(){const tid=document.getElementById('pm-ten').value;const amt=document.getElementById('pm-amt').value;const mo=document.getElementById('pm-mo').value;const type=document.getElementById('pm-type').value;if(!tid||!amt||!mo){showAlert('All required!','error');return;}await dv.from('payments').insert({tenant_id:tid,amount:Number(amt),month:mo,payment_type:type,payment_date:new Date().toISOString().split('T')[0]});closeModal('p-modal');showAlert('Payment recorded!');loadPayments();}
+async function delPayment(id){if(!confirm('Delete?'))return;await dv.from('payments').delete().eq('id',id);showAlert('Deleted!');loadPayments();}
 
 // BILLS
 async function loadBills(){
-  const {data}=await db.from('bills').select('*,tenants(name)').order('created_at',{ascending:false});
+  const {data}=await dv.from('bills').select('*,tenants(name)').order('created_at',{ascending:false});
   const el=document.getElementById('bills-content');
   if(!data?.length){el.innerHTML='<div class="empty"><div class="empty-icon">⚡</div>No bills yet.</div>';return;}
   el.innerHTML=`<table><thead><tr><th>Tenant</th><th>Month</th><th>Electricity</th><th>Water</th><th>Garbage</th><th>Total</th><th>Action</th></tr></thead><tbody>${data.map(b=>`<tr><td style="font-weight:600;">${b.tenants?.name||'—'}</td><td>${b.month}</td><td>₹${fmt(b.electricity)}</td><td>₹${fmt(b.water)}</td><td>₹${fmt(b.garbage)}</td><td style="font-weight:700;">₹${fmt(Number(b.electricity)+Number(b.water)+Number(b.garbage))}</td><td><button class="btn btn-d btn-s" onclick="delBill('${b.id}')">Delete</button></td></tr>`).join('')}</tbody></table>`;
 }
 async function openBillModal(){await loadTenSel('bl-ten');document.getElementById('bl-mo').value=getM();document.getElementById('bl-el').value='';document.getElementById('bl-wa').value=U.default_water_bill||'';document.getElementById('bl-ga').value=U.default_garbage_bill||'';document.getElementById('bill-modal').classList.add('open');}
-async function saveBill(){const tid=document.getElementById('bl-ten').value;const mo=document.getElementById('bl-mo').value;if(!tid||!mo){showAlert('Required!','error');return;}await db.from('bills').insert({tenant_id:tid,month:mo,electricity:Number(document.getElementById('bl-el').value||0),water:Number(document.getElementById('bl-wa').value||0),garbage:Number(document.getElementById('bl-ga').value||0)});closeModal('bill-modal');showAlert('Bill added!');loadBills();}
-async function delBill(id){if(!confirm('Delete?'))return;await db.from('bills').delete().eq('id',id);showAlert('Deleted!');loadBills();}
+async function saveBill(){const tid=document.getElementById('bl-ten').value;const mo=document.getElementById('bl-mo').value;if(!tid||!mo){showAlert('Required!','error');return;}await dv.from('bills').insert({tenant_id:tid,month:mo,electricity:Number(document.getElementById('bl-el').value||0),water:Number(document.getElementById('bl-wa').value||0),garbage:Number(document.getElementById('bl-ga').value||0)});closeModal('bill-modal');showAlert('Bill added!');loadBills();}
+async function delBill(id){if(!confirm('Delete?'))return;await dv.from('bills').delete().eq('id',id);showAlert('Deleted!');loadBills();}
 
 // REPORTS
 async function loadReports(){
-  const [ten,pay]=await Promise.all([db.from('tenants').select('*').eq('is_active',true).eq('landlord_id',U.id),db.from('payments').select('*').order('month')]);
+  const [ten,pay]=await Promise.all([dv.from('tenants').select('*').eq('is_active',true).eq('landlord_id',U.id),dv.from('payments').select('*').order('month')]);
   const T=ten.data||[],P=pay.data||[];
   const tIds=T.map(x=>x.id);const myP=P.filter(p=>tIds.includes(p.tenant_id));
   const col=myP.filter(p=>p.month===getM()).reduce((s,p)=>s+Number(p.amount),0);
@@ -868,7 +865,7 @@ async function loadReports(){
 
 // RECEIPT
 async function showReceipt(tenantId){
-  const [ten,pays,bills,rooms]=await Promise.all([db.from('tenants').select('*').eq('id',tenantId).single(),db.from('payments').select('*').eq('tenant_id',tenantId).eq('month',getM()),db.from('bills').select('*').eq('tenant_id',tenantId).eq('month',getM()),db.from('rooms').select('*,buildings(name)')]);
+  const [ten,pays,bills,rooms]=await Promise.all([dv.from('tenants').select('*').eq('id',tenantId).single(),dv.from('payments').select('*').eq('tenant_id',tenantId).eq('month',getM()),dv.from('bills').select('*').eq('tenant_id',tenantId).eq('month',getM()),dv.from('rooms').select('*,buildings(name)')]);
   const tn=ten.data;const r=rooms.data?.find(x=>x.id===tn.room_id);
   const pd=(pays.data||[]).reduce((s,p)=>s+Number(p.amount),0);
   const bill=bills.data?.[0];const tb=bill?Number(bill.electricity)+Number(bill.water)+Number(bill.garbage):0;
@@ -886,7 +883,7 @@ function openWA(phone,name,msg=null){
 // TENANT PORTAL
 async function loadMyDetails(){
   if(U.type!=='tenant')return;
-  const [pays,bills,rooms]=await Promise.all([db.from('payments').select('*').eq('tenant_id',U.id).order('created_at',{ascending:false}),db.from('bills').select('*').eq('tenant_id',U.id).order('created_at',{ascending:false}),db.from('rooms').select('*,buildings(name)')]);
+  const [pays,bills,rooms]=await Promise.all([dv.from('payments').select('*').eq('tenant_id',U.id).order('created_at',{ascending:false}),dv.from('bills').select('*').eq('tenant_id',U.id).order('created_at',{ascending:false}),dv.from('rooms').select('*,buildings(name)')]);
   const r=rooms.data?.find(x=>x.id===U.room_id);
   const P=pays.data||[];const B=bills.data||[];
   const pd=P.filter(p=>p.month===getM()).reduce((s,p)=>s+Number(p.amount),0);
