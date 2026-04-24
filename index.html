@@ -9,7 +9,9 @@
 class DataVault {
   constructor(apiKey) {
     this.apiKey = apiKey;
-    this.baseURL = 'http://localhost:3000/api';
+    // Auto-detect environment
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    this.baseURL = isLocal ? 'http://localhost:3000/api' : '/api';
   }
 
   from(table) {
@@ -99,6 +101,7 @@ class DataVaultQuery {
 }
 
 const dv = new DataVault('04b653d44e291c584adbe3c76c6c9c3c');
+</script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 :root{
@@ -565,8 +568,6 @@ tbody tr:hover{background:var(--gl);}
 </div></div>
 
 <script>
-const dv = new DataVault('04b653d44e291c584adbe3c76c6c9c3c');
-
 let U=null,CB=null,CT=null,MOT=null,SL='english';
 
 const TX={
@@ -633,7 +634,7 @@ async function llRegister(){
   if(pw.length<6){showAuthErr('lr-err','Password must be 6+ characters!');return;}
   const {data:ex}=await dv.from('landlords').select('id').eq('phone',ph);
   if(ex?.length){showAuthErr('lr-err','Phone already registered!');return;}
-  const {data,error}=await dv.from('landlords').insert({name,phone:ph,email:em||null,password_hash:btoa(pw),language:'english',default_water_bill:0,default_garbage_bill:0}).select().single();
+  const {data,error}=await dv.from('landlords').insert({name,phone:ph,email:em||null,password_hash:btoa(pw),language:'english',default_water_bill:0,default_garbage_bill:0});
   if(error){showAuthErr('lr-err','Error: '+error.message);return;}
   localStorage.setItem('kt-ll',JSON.stringify(data));
   U={...data,type:'landlord',lang:'english'};
@@ -683,14 +684,19 @@ function openLangChange(){
 
 // INIT APP
 function initApp(){
-  document.getElementById('auth-page').style.display='none';
-  document.getElementById('lang-page').style.display='none';
-  document.getElementById('app').style.display='';
-  document.getElementById('sidebar-user').textContent=(U.name||U.phone)+(U.type==='tenant'?' (Tenant)':' (Landlord)');
-  document.getElementById('top-date').textContent=new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'long',year:'numeric'});
-  applyLang();buildNav();
-  if(U.type==='landlord'){loadSettings();showScreen('dashboard');}
-  else{showScreen('mydetails');}
+  try{
+    document.getElementById('auth-page').style.display='none';
+    document.getElementById('lang-page').style.display='none';
+    document.getElementById('app').style.display='block';
+    document.getElementById('sidebar-user').textContent=(U.name||U.phone)+(U.type==='tenant'?' (Tenant)':' (Landlord)');
+    document.getElementById('top-date').textContent=new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'long',year:'numeric'});
+    applyLang();buildNav();
+    if(U.type==='landlord'){loadSettings().catch(e=>console.error('Settings load error:', e));showScreen('dashboard');}
+    else{showScreen('mydetails');}
+  }catch(e){
+    console.error('initApp error:', e);
+    showAlert('Error initializing app: '+e.message,'error');
+  }
 }
 
 function applyLang(){
@@ -751,6 +757,8 @@ function ini(n){return(n||'?').split(' ').map(x=>x[0]).join('').toUpperCase().sl
 function logout(){localStorage.removeItem('kt-ll');localStorage.removeItem('kt-tn');U=null;document.getElementById('app').style.display='none';document.getElementById('auth-page').style.display='flex';}
 
 // SETTINGS
+async function checkLeaseAlerts(){}
+
 async function loadSettings(){
   if(!U||U.type!=='landlord')return;
   const {data}=await dv.from('landlords').select('*').eq('id',U.id).single();
